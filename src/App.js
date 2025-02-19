@@ -259,7 +259,6 @@ const AutomataSimulator = () => {
             })
           })}
           {nodes.map((node) => {
-
             return (
               <Group key={node.id}
                 x={node.x}
@@ -268,18 +267,6 @@ const AutomataSimulator = () => {
                 onClick={() => handleNodeClick(node)}
                 onDragMove={(e) => handleDragMove(e, node)}
               >
-                {/* Draw one black ring if the node is finite */}
-                {finiteNodes.has(node.id) && (
-                  <Circle
-                    x={0}
-                    y={0}
-                    zIndex={10}
-                    radius={25}
-                    stroke="black"
-                    strokeWidth={1}
-                    fill="transparent"
-                  />
-                )}
                 {/*if node is first*/}
                 {node.id == 'q0' && (
                   <Arrow
@@ -299,6 +286,17 @@ const AutomataSimulator = () => {
                   stroke={selectedNode ? (selectedNode.id == node.id ? "rgba(89, 89, 255,1.0)" : "black") : "black"}
                   strokeWidth={selectedNode ? (selectedNode.id == node.id ? 2 : 1) : 1}
                 />
+                {/* Draw one black ring if the node is finite */}
+                {finiteNodes.has(node.id) && (
+                  <Circle
+                    x={0}
+                    y={0}
+                    radius={25}
+                    stroke="black"
+                    strokeWidth={1}
+                    fill="transparent"
+                  />
+                )}
                 <Text
                   x={0}
                   y={-7}
