@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/AutomataSimulator/static/css/main.c9d0da98.css",
+    "main.js": "/AutomataSimulator/static/js/main.9d198496.js",
+    "static/js/488.51ab77c5.chunk.js": "/AutomataSimulator/static/js/488.51ab77c5.chunk.js",
+    "index.html": "/AutomataSimulator/index.html",
+    "main.c9d0da98.css.map": "/AutomataSimulator/static/css/main.c9d0da98.css.map",
+    "main.9d198496.js.map": "/AutomataSimulator/static/js/main.9d198496.js.map",
+    "488.51ab77c5.chunk.js.map": "/AutomataSimulator/static/js/488.51ab77c5.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.c9d0da98.css",
+    "static/js/main.9d198496.js"
+  ]
+}
