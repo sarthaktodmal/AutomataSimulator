@@ -1,4 +1,3 @@
-import { transition } from "d3";
 import React, { useState, useEffect } from "react";
 import { Stage, Layer, Circle, Arrow, Text, Shape, Group } from "react-konva";
 
@@ -26,7 +25,6 @@ const AutomataSimulator = () => {
       prev.map((n) => (n.id === node.id ? { ...n, x, y } : n))
     );
   };
-
 
   const handleNodeClick = (node) => {
     setCurrNode(null)
@@ -132,7 +130,6 @@ const AutomataSimulator = () => {
   };
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
   const getNodeById = (id) => nodes.find(node => node.id === id);
 
   const handleRun = async () => {
@@ -264,13 +261,20 @@ const AutomataSimulator = () => {
           {nodes.map((node) => {
 
             return (
-              <Group key={node.id}>
+              <Group key={node.id}
+                x={node.x}
+                y={node.y}
+                draggable
+                onClick={() => handleNodeClick(node)}
+                onDragMove={(e) => handleDragMove(e, node)}
+              >
                 {/* Draw one black ring if the node is finite */}
                 {finiteNodes.has(node.id) && (
                   <Circle
-                    x={node.x}
-                    y={node.y}
-                    radius={35} // This is the radius of the additional circle
+                    x={0}
+                    y={0}
+                    zIndex={10}
+                    radius={25}
                     stroke="black"
                     strokeWidth={1}
                     fill="transparent"
@@ -279,7 +283,7 @@ const AutomataSimulator = () => {
                 {/*if node is first*/}
                 {node.id == 'q0' && (
                   <Arrow
-                    points={[node.x - 70, node.y, node.x - 30, node.y]}
+                    points={[-70, 0, -30, 0]}
                     stroke="black"
                     fill="black"
                     pointerLength={10}
@@ -288,19 +292,16 @@ const AutomataSimulator = () => {
                 )
                 }
                 <Circle
-                  x={node.x}
-                  y={node.y}
+                  x={0}
+                  y={0}
                   radius={30}
                   fill={selectedNode ? (selectedNode.id == node.id ? "rgba(207, 207, 255,1.0)" : "white") : (currNode && currNode.id == node.id ? (finiteNodes.has(currNode.id) ? "green" : "red") : "white")}
                   stroke={selectedNode ? (selectedNode.id == node.id ? "rgba(89, 89, 255,1.0)" : "black") : "black"}
                   strokeWidth={selectedNode ? (selectedNode.id == node.id ? 2 : 1) : 1}
-                  draggable
-                  onDragMove={(e) => handleDragMove(e, node)}
-                  onClick={() => handleNodeClick(node)}
                 />
                 <Text
-                  x={node.x}
-                  y={node.y - 5}
+                  x={0}
+                  y={-7}
                   text={node.id}
                   fontSize={16}
                   align="center"
