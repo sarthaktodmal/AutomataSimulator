@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { color } from "d3";
+import React, { useState } from "react";
 import { Stage, Layer, Circle, Arrow, Text, Shape, Group } from "react-konva";
 
 const AutomataSimulator = () => {
@@ -33,16 +34,24 @@ const AutomataSimulator = () => {
     } else {
       const transitionSymbol = prompt("Enter transition symbol:");
       if (transitionSymbol) {
+        const index = selectedNode.transitions.findIndex(item => item.targetid === node.id);
+
         setNodes((prevNodes) =>
           prevNodes.map((n) =>
             n.id === selectedNode.id
               ? {
-                ...n,
-                transitions: [
-                  ...n.transitions,
-                  { targetid: node.id, label: transitionSymbol },
-                ],
-              }
+                  ...n,
+                  transitions: index !== -1
+                    ? n.transitions.map((t, i) =>
+                        i === index
+                          ? { ...t, label: `${t.label},${transitionSymbol}` } // Append to label if exists
+                          : t
+                      )
+                    : [
+                        ...n.transitions,
+                        { targetid: node.id, label: transitionSymbol }, // Add new transition if not exists
+                      ],
+                }
               : n
           )
         );
@@ -117,8 +126,8 @@ const AutomataSimulator = () => {
           pointerWidth={10}
         />
         <Text
-          x={loopX - 5}
-          y={loopY - loopRadius - 15}
+          x={loopX - label.length*3 - 3}
+          y={loopY - loopRadius - 18}
           text={label}
           fontSize={16}
           fill="black"
@@ -133,7 +142,6 @@ const AutomataSimulator = () => {
   const getNodeById = (id) => nodes.find(node => node.id === id);
 
   const handleRun = async () => {
-    if (!inputString) alert("Enter String to validate")
     setSelectedNode(null)
     setValidationResult(null)
     let currNode = nodes[0];
@@ -144,7 +152,7 @@ const AutomataSimulator = () => {
       console.log("Current Character: ", char)
       let found = false;
       for (const transition of currNode.transitions) {
-        if (transition.label === char) {
+        if (transition.label.split(",").filter(num => num !== "").includes(char)) {
           console.log(`Transition: ${currNode.id} -> ${transition.targetid} on '${char}'`);
           currNode = getNodeById(transition.targetid);
           setCurrNode(currNode);
@@ -194,7 +202,11 @@ const AutomataSimulator = () => {
         >
           Set Finite
         </button>
+
       )}
+      {selectedNode &&
+        <Text style={{ position: "absolute", bottom: 5, right: 60, zIndex: 10, padding: 15, color: "grey"}}>Select a node to add transition</Text>
+      }
       {validationResult && (
         <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: validationResult.includes("String is Valid") ? "green" : "red", fontSize: 18, fontWeight: "bold" }}>
           {validationResult}
@@ -207,10 +219,10 @@ const AutomataSimulator = () => {
         onClick={handleStageClick}
       >
         <Layer>
-          {nodes.map((node, index) => {
+        {nodes.map((node, index) => {
             return node.transitions.map((transition, tindex) => {
               const edge = { source: node, target: getNodeById(transition.targetid), label: transition.label };
-
+              
               if (edge.source.id === edge.target.id) {
                 return drawSelfLoop(edge.source.x, edge.source.y, edge.label, index);
               } else {
@@ -221,7 +233,6 @@ const AutomataSimulator = () => {
                   edge.target.y,
                   30
                 );
-
                 const midX = (startX + endX) / 2;
                 const midY = (startY + endY) / 2;
                 const dx = endX - startX;
@@ -241,17 +252,16 @@ const AutomataSimulator = () => {
                       pointerLength={10}
                       pointerWidth={10}
                     />
+                    {/* Label Text */}
                     <Text
-                      x={labelX - 8}
+                      x={labelX - edge.label.length*3 -5}
                       y={labelY - 8}
                       text={edge.label}
                       fontSize={16}
                       fill="black"
                       align="center"
                       verticalAlign="middle"
-                      padding={5}
-                      shadowBlur={5}
-                      shadowColor="rgba(0,0,0,0.3)"
+                      padding={5}  
                     />
                   </Group>
                 );
@@ -264,11 +274,12 @@ const AutomataSimulator = () => {
                 x={node.x}
                 y={node.y}
                 draggable
+                onTap={() => handleNodeClick(node)}
                 onClick={() => handleNodeClick(node)}
                 onDragMove={(e) => handleDragMove(e, node)}
               >
                 {/*if node is first*/}
-                {node.id == 'q0' && (
+                {node.id === 'q0' && (
                   <Arrow
                     points={[-70, 0, -30, 0]}
                     stroke="black"
@@ -282,9 +293,9 @@ const AutomataSimulator = () => {
                   x={0}
                   y={0}
                   radius={30}
-                  fill={selectedNode ? (selectedNode.id == node.id ? "rgba(207, 207, 255,1.0)" : "white") : (currNode && currNode.id == node.id ? (finiteNodes.has(currNode.id) ? "green" : "red") : "white")}
-                  stroke={selectedNode ? (selectedNode.id == node.id ? "rgba(89, 89, 255,1.0)" : "black") : "black"}
-                  strokeWidth={selectedNode ? (selectedNode.id == node.id ? 2 : 1) : 1}
+                  fill={selectedNode ? (selectedNode.id === node.id ? "rgba(207, 207, 255,1.0)" : "white") : (currNode && currNode.id === node.id ? (finiteNodes.has(currNode.id) ? "#32CD32" : "red") : "white")}
+                  stroke={selectedNode ? (selectedNode.id === node.id ? "rgba(89, 89, 255,1.0)" : "black") : "black"}
+                  strokeWidth={selectedNode ? (selectedNode.id === node.id ? 2 : 1) : 1}
                 />
                 {/* Draw one black ring if the node is finite */}
                 {finiteNodes.has(node.id) && (
@@ -301,6 +312,7 @@ const AutomataSimulator = () => {
                   x={0}
                   y={-7}
                   text={node.id}
+                  fill={currNode ? currNode.id === node.id ? "white": "black" : "black"}
                   fontSize={16}
                   align="center"
                   verticalAlign="middle"
