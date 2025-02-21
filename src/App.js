@@ -1,6 +1,5 @@
-import { color } from "d3";
 import React, { useState } from "react";
-import { Stage, Layer, Circle, Arrow, Text, Shape, Group } from "react-konva";
+import { Stage, Layer, Circle, Arrow, Text, Shape, Group, Line } from "react-konva";
 
 const AutomataSimulator = () => {
   const [nodes, setNodes] = useState([]);
@@ -9,21 +8,30 @@ const AutomataSimulator = () => {
   const [inputString, setInputString] = useState("");
   const [currNode, setCurrNode] = useState(null);
   const [validationResult, setValidationResult] = useState(null);
+  const [stageProps, setStageProps] = useState({
+    x: 0,
+    y: 0,
+    scale: 1,
+    draggable: true
+  });
+  const [stageDragging, setIsStageDragging] = useState(false);
 
   const handleAddNode = () => {
+    const x = (window.innerWidth / 2 - stageProps.x) / stageProps.scale;
+    const y = (window.innerHeight / 2 - stageProps.y) / stageProps.scale;  
     const newNode = {
       id: `q${nodes.length}`,
-      x: Math.random() * (window.innerWidth - 100) + 50,
-      y: Math.random() * (window.innerHeight - 100) + 50,
+      x: x,
+      y: y,
       transitions: []
     };
     setNodes((prev) => [...prev, newNode]);
   };
 
-  const handleDragMove = (e, node) => {
-    const { x, y } = e.target.attrs;
+  const handleDragMove = (e, nodeid) => {
+    const { x, y } = e.target.position();
     setNodes((prev) =>
-      prev.map((n) => (n.id === node.id ? { ...n, x, y } : n))
+      prev.map((n) => (n.id === nodeid ? { ...n, x, y } : n))
     );
   };
 
@@ -40,18 +48,18 @@ const AutomataSimulator = () => {
           prevNodes.map((n) =>
             n.id === selectedNode.id
               ? {
-                  ...n,
-                  transitions: index !== -1
-                    ? n.transitions.map((t, i) =>
-                        i === index
-                          ? { ...t, label: `${t.label},${transitionSymbol}` } // Append to label if exists
-                          : t
-                      )
-                    : [
-                        ...n.transitions,
-                        { targetid: node.id, label: transitionSymbol }, // Add new transition if not exists
-                      ],
-                }
+                ...n,
+                transitions: index !== -1
+                  ? n.transitions.map((t, i) =>
+                    i === index
+                      ? { ...t, label: `${t.label},${transitionSymbol}` }
+                      : t
+                  )
+                  : [
+                    ...n.transitions,
+                    { targetid: node.id, label: transitionSymbol },
+                  ],
+              }
               : n
           )
         );
@@ -84,8 +92,8 @@ const AutomataSimulator = () => {
     const angle = Math.atan2(targetY - sourceY, targetX - sourceX);
     const startX = sourceX + radius * Math.cos(angle);
     const startY = sourceY + radius * Math.sin(angle);
-    const endX = targetX - radius * Math.cos(angle);
-    const endY = targetY - radius * Math.sin(angle);
+    const endX = targetX - (radius+2) * Math.cos(angle);
+    const endY = targetY - (radius+2) * Math.sin(angle);
 
     return { startX, startY, endX, endY };
   };
@@ -126,7 +134,7 @@ const AutomataSimulator = () => {
           pointerWidth={10}
         />
         <Text
-          x={loopX - label.length*3 - 3}
+          x={loopX - label.length * 3 - 3}
           y={loopY - loopRadius - 18}
           text={label}
           fontSize={16}
@@ -173,6 +181,74 @@ const AutomataSimulator = () => {
     }
   };
 
+  const drawGrid = (size, color) => {
+    const lines = [];
+    const stageWidth = window.innerWidth / stageProps.scale;
+    const stageHeight = window.innerHeight / stageProps.scale;
+    const startX = -stageProps.x / stageProps.scale;
+    const startY = -stageProps.y / stageProps.scale;
+    const endX = startX + stageWidth;
+    const endY = startY + stageHeight;
+  
+    for (let i = Math.floor(startX / size) * size; i < endX; i += size) {
+      lines.push(
+        <Line key={`v${i}`} points={[i, startY, i, endY]} stroke={color} strokeWidth={0.5} />
+      );
+    }
+    for (let j = Math.floor(startY / size) * size; j < endY; j += size) {
+      lines.push(
+        <Line key={`h${j}`} points={[startX, j, endX, j]} stroke={color} strokeWidth={0.5} />
+      );
+    }
+    return lines;
+  };  
+
+  const handleWheel = (e) => {
+  e.evt.preventDefault();
+
+  const scaleBy = 1.1;
+  const stage = e.target.getStage();
+  const oldScale = stageProps.scale;
+  const pointer = stage.getPointerPosition();
+
+  // Calculate new scale
+  const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+
+  // Adjust position to zoom into the pointer position
+  const mousePointTo = {
+    x: (pointer.x - stageProps.x) / oldScale,
+    y: (pointer.y - stageProps.y) / oldScale,
+  };
+
+  setStageProps((prev)=>({
+    x: pointer.x - mousePointTo.x * newScale,
+    y: pointer.y - mousePointTo.y * newScale,
+    scale: newScale,
+    draggable: prev.draggable
+  }));
+};
+
+  const handleDragMoveScreen = (e) => {
+    setStageProps((prev) => ({
+      ...prev,
+      x: e.target.x(),
+      y: e.target.y(),
+    }));
+  };
+
+  const nodeMouseDown = () => {
+    setStageProps((prev)=>({
+      ...prev,
+      draggable: false
+    }));
+  }
+  const nodeMouseUp = () => {
+    setStageProps((prev)=>({
+      ...prev,
+      draggable: true
+    }));
+  }
+
   return (
     <div style={{ position: "relative" }}>
       <button
@@ -198,14 +274,14 @@ const AutomataSimulator = () => {
       {selectedNode && (
         <button
           onClick={handleSetFinite}
-          style={{ position: "absolute", top: 10, left: 120, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "green" }}
+          style={{ position: "absolute", top: 10, left: 120, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "black" }}
         >
           Set Finite
         </button>
 
       )}
       {selectedNode &&
-        <Text style={{ position: "absolute", bottom: 5, right: 60, zIndex: 10, padding: 15, color: "grey"}}>Select a node to add transition</Text>
+        <Text style={{ position: "absolute", bottom: 5, right: 60, zIndex: 10, padding: 15, color: "grey" }}>Select a node to add transition</Text>
       }
       {validationResult && (
         <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: validationResult.includes("String is Valid") ? "green" : "red", fontSize: 18, fontWeight: "bold" }}>
@@ -215,14 +291,37 @@ const AutomataSimulator = () => {
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
-        style={{ background: "#f0f0f0" }}
+        style={{ background: "white", cursor: stageProps.draggable && stageDragging? "grabbing": "default"}}
+        x={stageProps.x}
+        y={stageProps.y}
+        draggable={stageProps.draggable && stageDragging}
         onClick={handleStageClick}
+        {...(stageProps.draggable && stageDragging ? { onDragMove: handleDragMoveScreen } : {})}
+        onWheel={handleWheel}
+        
+        //desktop
+        onPointerDown={(event)=> {if(event.evt.button === 1){
+          setIsStageDragging(true);
+        }}}
+        onPointerUp={(event)=> {if(event.evt.button === 1){
+          setIsStageDragging(false);
+        }}}
+
+        //mobile
+        onTouchStart={() => setIsStageDragging(true)}
+        onTouchEnd={() => setIsStageDragging(false)} 
+        
+        scaleX={stageProps.scale}  
+        scaleY={stageProps.scale}  
       >
         <Layer>
-        {nodes.map((node, index) => {
+          {/* Grid Background */}
+          {drawGrid(20, "#9c9c9c")}
+
+          {nodes.map((node, index) => {
             return node.transitions.map((transition, tindex) => {
               const edge = { source: node, target: getNodeById(transition.targetid), label: transition.label };
-              
+
               if (edge.source.id === edge.target.id) {
                 return drawSelfLoop(edge.source.x, edge.source.y, edge.label, index);
               } else {
@@ -254,14 +353,14 @@ const AutomataSimulator = () => {
                     />
                     {/* Label Text */}
                     <Text
-                      x={labelX - edge.label.length*3 -5}
+                      x={labelX - edge.label.length * 3 - 5}
                       y={labelY - 8}
                       text={edge.label}
                       fontSize={16}
                       fill="black"
                       align="center"
                       verticalAlign="middle"
-                      padding={5}  
+                      padding={5}
                     />
                   </Group>
                 );
@@ -276,7 +375,9 @@ const AutomataSimulator = () => {
                 draggable
                 onTap={() => handleNodeClick(node)}
                 onClick={() => handleNodeClick(node)}
-                onDragMove={(e) => handleDragMove(e, node)}
+                onMouseDown={nodeMouseDown}
+                onMouseUp={nodeMouseUp}
+                onDragMove={(e) => handleDragMove(e, node.id)}
               >
                 {/*if node is first*/}
                 {node.id === 'q0' && (
@@ -309,10 +410,10 @@ const AutomataSimulator = () => {
                   />
                 )}
                 <Text
-                  x={0}
+                  x={0 - node.id.length*5 + 10}
                   y={-7}
                   text={node.id}
-                  fill={currNode ? currNode.id === node.id ? "white": "black" : "black"}
+                  fill={currNode ? currNode.id === node.id ? "white" : "black" : "black"}
                   fontSize={16}
                   align="center"
                   verticalAlign="middle"

@@ -40,4 +40,3 @@ The Automata Simulator is hosted on GitHub Pages. You can visit the simulator at
 ## License
 
 This project is under development and currently does not have an open-source license. Copying or reusing the code is restricted.
-
