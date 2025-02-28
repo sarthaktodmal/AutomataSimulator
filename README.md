@@ -17,9 +17,9 @@ Automata Simulator is an interactive tool for designing and testing Deterministi
 
 - Support for Non-Deterministic Finite Automata (NFA).
 - Support for Pushdown Automata (PDA).
-- Drag-and-drop functionality for easier state positioning.
 - Save and load automata configurations.
 - Improved UI and additional customization options.
+- Organized Code
 
 ## Deployment
 
