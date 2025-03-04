@@ -3,12 +3,12 @@ import { Stage, Layer, Circle, Arrow, Text, Shape, Group, Line, Image,Rect } fro
 import InputPopup from './components/InputPopup';
 
 const AutomataSimulator = () => {
-  const [nodes, setNodes] = useState([]);
-  const [nodeMap, setNodeMap] = useState({}); //Node Map for effiecency
+  const [nodeMap, setNodeMap] = useState({});
+  const [transitionMap, setTransitionMap] = useState({});
   const [selectedNode, setSelectedNode] = useState(null);
   const [finiteNodes, setFiniteNodes] = useState(new Set());
   const [inputString, setInputString] = useState("");
-  const [currNode, setCurrNode] = useState(null);
+  const [currNode, setCurrNode] = useState([]);
   const [validationResult, setValidationResult] = useState(null);
   const [stageProps, setStageProps] = useState({
     x: 0,
@@ -19,11 +19,11 @@ const AutomataSimulator = () => {
   const [stageDragging, setIsStageDragging] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
 
-  const [highlightedTransition, setHighlightedTransition] = useState({});
+  const [highlightedTransition, setHighlightedTransition] = useState([]);
 
   //Expected Transition not provided (DFA)
   const [image, setImage] = useState(null);
-  const [showQuestion, setshowQuestion] = useState(false);
+  const [showQuestion, setShowQuestion] = useState(false);
 
   //StepWiseRunning Synchronization
   const [stepIndex, setStepIndex] = useState(0);
@@ -32,8 +32,11 @@ const AutomataSimulator = () => {
 
   //Symbol Input Popup
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [targetNode, settargetNode] = useState(null);
+  const [targetNode, setTargetNode] = useState(null);
   
+  //DFA OR NFA
+  const [automataType,setAutomataType] = useState("DFA");
+
   useEffect(() => {
     const img = new window.Image();
     img.src = require("./assets/q3.png");
@@ -41,15 +44,6 @@ const AutomataSimulator = () => {
       setImage(img);
     };
   }, []);
-
-  //Update NodeMap whenever nodes changes
-  useEffect(() => {
-    const map = {};
-    nodes.forEach(node => {
-      map[node.id] = node;
-    });
-    setNodeMap(map);
-  }, [nodes]);
 
   //transition higlight
   useEffect(() => {
@@ -65,89 +59,76 @@ const AutomataSimulator = () => {
       };
   }, [highlightedTransition]);
 
-
   const handleAddNode = () => {
     const x = (window.innerWidth / 2 - stageProps.x) / stageProps.scale;
     const y = (window.innerHeight / 2 - stageProps.y) / stageProps.scale;  
     const newNode = {
-      id: `q${nodes.length}`,
+      id: `q${Object.keys(nodeMap).length}`,
       x: x,
       y: y,
-      transitions: []
     };
-    setNodes((prev) => [...prev, newNode]);
+    setNodeMap((prev) => ({ ...prev, [newNode.id]: newNode }));
   };
 
   const handleDragMove = (e, nodeid) => {
     const { x, y } = e.target.position();
-    setNodes((prev) =>
-      prev.map((n) => (n.id === nodeid ? { ...n, x, y } : n))
-    );
+    setNodeMap((prev) => ({ ...prev, [nodeid]: { id: nodeid, x:x, y:y } }));
   };
 
   const handleSymbolInputSubmit = (symbol) => {
-    if (!symbol) {
-      console.warn("No transition symbol provided.");
-      return;
-    }
-    if (!targetNode) {
-      console.warn("No source node was selected.");
-      return;
-    }
-
-    if (selectedNode) {
-      const index = selectedNode.transitions.findIndex(item => item.targetid === targetNode.id);
-      setNodes((prevNodes) =>
-        prevNodes.map((n) =>
-          n.id === selectedNode.id
-            ? {
-              ...n,
-              transitions: index !== -1
-                ? n.transitions.map((t, i) =>
-                  i === index
-                    ? { ...t, label: `${t.label},${symbol}` }
-                    : t
-                )
-                : [
-                  ...n.transitions,
-                  { targetid: targetNode.id, label: symbol },
-                ],
-            }
-            : n
-        )
-      );
+    if (!symbol) return;
+    if (selectedNode && targetNode) {
+      setTransitionMap((prev) => {
+        const newMap = { ...prev };
+        if (!newMap[selectedNode.id]) {
+          newMap[selectedNode.id] = [];
+        }
+        const existingTransition = newMap[selectedNode.id].find(
+          (t) => t.targetid === targetNode.id
+        );
+        if (existingTransition) {
+          const existingSymbols = new Set(existingTransition.label.split(','));
+          const newSymbols = symbol.split(',').map((s) => s.trim());
+          newSymbols.forEach((s) => existingSymbols.add(s));
+          existingTransition.label = Array.from(existingSymbols).join(',');
+        } else {
+          const newTransition = {
+            label: symbol.split(',').map((s) => s.trim()).join(','),
+            sourceid: selectedNode.id,
+            targetid: targetNode.id,
+          };
+          newMap[selectedNode.id].push(newTransition);
+        }
+        return newMap;
+      });
       setSelectedNode(null);
-      settargetNode(null);
+      setTargetNode(null);
     }
     setIsPopupOpen(false);
-  }
-
+  };
+  
   const handleInputClose = () => {
     setIsPopupOpen(false);
     setSelectedNode(null);
-    settargetNode(null)
+    setTargetNode(null)
   };
 
   const handleNodeClick = (node) => {
-    //reset related to running
     if(isRunning)return
-    setIsRunning(false);
     setIsRunningStepWise(false);
-    setshowQuestion(false);
+    setShowQuestion(false);
     setValidationResult(null)
     setCurrNode(null);
     setStepIndex(0);
-    setshowQuestion(false);
     setHighlightedTransition(null);
 
     if (!selectedNode) {
       setSelectedNode(node);
     } else {
-      settargetNode(node);
+      setTargetNode(node);
       setIsPopupOpen(true);
     }
   };
-
   const handleStageClick = (e) => {
     if (e.target === e.target.getStage()) {
       setSelectedNode(null);
@@ -178,7 +159,7 @@ const AutomataSimulator = () => {
     return { startX, startY, endX, endY };
   };
 
-  const drawSelfLoop = (x, y, label, index) => {
+  const drawSelfLoop = (x, y, label, index,isHighlighted) => {
     const radius = 20;
     const loopRadius = 20;
     const angleOffset = Math.PI;
@@ -198,7 +179,7 @@ const AutomataSimulator = () => {
             context.closePath();
             context.strokeShape(shape);
           }}
-          stroke="black"
+          stroke={isHighlighted?"red":"black"}
           strokeWidth={2}
         />
         <Arrow
@@ -208,11 +189,20 @@ const AutomataSimulator = () => {
             loopX + loopRadius * Math.cos(arrowAngle + Math.PI / 6),
             loopY + loopRadius * Math.sin(arrowAngle + Math.PI / 6),
           ]}
-          stroke="black"
-          fill="black"
+          stroke={isHighlighted?"red":"black"}
+          fill={isHighlighted?"red":"black"}
           pointerLength={10}
           pointerWidth={10}
         />
+        <Rect
+          x={loopX - label.length * 3 - 6}
+          y={loopY - loopRadius - 20}
+          width={(loopX + label.length * 3) - (loopX - label.length * 3) + 10}
+          height={18}
+          fill={"white"}
+          opacity={0.8}
+        />
+        
         <Text
           x={loopX - label.length * 3 - 3}
           y={loopY - loopRadius - 18}
@@ -227,104 +217,268 @@ const AutomataSimulator = () => {
   };
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-  const getNodeById = (id) => nodeMap[id]; //Using NodeMap to get node by Id
+  const getNodeById = (id) => nodeMap[id];
 
   const handleRun = async () => {
-    if(isRunning) return;
-    setIsRunning(true)
-    if(isRunningStepWise) setIsRunningStepWise(false);
-    setshowQuestion(false);
-    setSelectedNode(null)
+    if (!nodeMap["q0"]) return;
+    if (isRunning) return;
+    setIsRunning(true);
+    if (isRunningStepWise) setIsRunningStepWise(false);
+    setShowQuestion(false);
+    setSelectedNode(null);
     setHighlightedTransition(null);
-    setValidationResult(null)
+    setValidationResult(null);
     setStepIndex(0);
-    let mcurrNode = nodes[0];
-    setCurrNode(mcurrNode);
-
+  
+    let mcurrNode = nodeMap["q0"];
+    setCurrNode([mcurrNode]);
+  
     for (const char of inputString) {
-      await sleep(1000);
-      let found = false;
-      for (const transition of mcurrNode.transitions) {
-        if (transition.label.split(",").filter(num => num !== "").includes(char)) {
-          setHighlightedTransition({d: transition, target: mcurrNode.id}); //
-          mcurrNode = getNodeById(transition.targetid);
-          await sleep(200);
-          setCurrNode(mcurrNode);
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        setshowQuestion(true);
-        setValidationResult(`No transition for '${char}' at ${mcurrNode.id}`)
-        setIsRunning(false);
+      const transitions = transitionMap[mcurrNode.id];
+      const transition = transitions&&transitions.filter((t) =>
+        t.label.split(',').includes(char)
+      );
+      const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
+      
+      if(epsilonPaths&&epsilonPaths.length>=1){
+        setShowQuestion(true);
+        setIsRunning(false)
+        setValidationResult("Epsilon Transitions not allowed in DFA")
         return;
       }
-      setStepIndex(prevStepIndex => prevStepIndex + 1)
+      await sleep(500);
+      if(transition&&transition.length>1){
+        setShowQuestion(true);
+        setIsRunning(false)
+        setValidationResult("Multiple Transitions for Same Symbol")
+        return;
+      }
+      if (!transition || transition.length<=0) {
+        setShowQuestion(true);
+        setIsRunning(false);
+        setValidationResult(`No transition for '${char}'`);
+        return;
+      }
+      const nextNode = getNodeById(transition[0].targetid);
+      setHighlightedTransition(transition);
+      setCurrNode([]);
+      await sleep(500);
+      setCurrNode([nextNode]);
+      mcurrNode = nextNode;
+      setStepIndex((prevStepIndex) => prevStepIndex + 1);
     }
-    if (finiteNodes.has(mcurrNode.id)) {
-      setValidationResult("String is Valid")
+    
+    if (mcurrNode && finiteNodes.has(mcurrNode.id)) {
+      setValidationResult("String is Valid");
     } else {
-      setValidationResult("String is invalid")
+      setValidationResult("String is invalid");
     }
     setIsRunning(false);
   };
-
+  
   const handleStepWise = async () => {
-    if(selectedNode) setSelectedNode(null);
+    if (selectedNode) setSelectedNode(null);
     const char = inputString[stepIndex];
-    let found = false;
-    let mcurrNode = currNode;
+    let mcurrNode = currNode[0];
 
-    if(inputString){
-      for (const transition of mcurrNode.transitions) {
-        if (transition.label.split(",").filter(num => num !== "").includes(char)) {
-          setHighlightedTransition({d: transition, target: mcurrNode.id});//
-          mcurrNode = getNodeById(transition.targetid);
-          await sleep(200);
-          setCurrNode(mcurrNode);
-          found = true;
-          break;
-        }
-      }
-    
-      if (!found) {
-        setIsRunningStepWise(false);
-        setshowQuestion(true);
-        setValidationResult(`No transition for '${char}' at ${mcurrNode.id}`)
+    if (inputString && mcurrNode) {
+      const transitions = transitionMap[mcurrNode.id];
+      const transition = transitions&&transitions.filter((t) => t.label.split(',').includes(char));
+      const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
+      
+      if(epsilonPaths&&epsilonPaths.length>=1){
+        setShowQuestion(true);
+        setIsRunningStepWise(false)
+        setValidationResult("Epsilon Transitions not allowed in DFA")
         return;
       }
+      if(transition&&transition.length>1){
+        setShowQuestion(true);
+        setIsRunningStepWise(false)
+        setValidationResult("Multiple Transitions for Same Symbol")
+        return;
+      }
+      if (!transition || transition.length<=0) {
+        setIsRunningStepWise(false);
+        setShowQuestion(true);
+        setValidationResult(`No transition for '${char}'`);
+        return;
+      }
+      setCurrNode([])
+      setHighlightedTransition(transition);
+      await sleep(500);
+      const nextNode = getNodeById(transition[0].targetid);
+      setCurrNode([nextNode]);
+      mcurrNode = nextNode;
     }
-   
-    //step wise finished
-    if (stepIndex === inputString.length-1 || !inputString) {
+    if (stepIndex >= inputString.length - 1) {
       setIsRunningStepWise(false);
-      if(finiteNodes.has(mcurrNode.id))
-        setValidationResult("String is Valid")
-      else
-      setValidationResult("String is invalid")
+      if (mcurrNode && finiteNodes.has(mcurrNode.id)) {
+        setValidationResult("String is Valid");
+      } else {
+        setValidationResult("String is invalid");
+      }
     }
-    setStepIndex(prevStepIndex => prevStepIndex + 1);
+    setStepIndex((prevStepIndex) => prevStepIndex + 1);
   };
-
-  const onStepWiseClick = () => {
+  const onStepWiseClick = async() => {
     if(isRunning) return;
+    if(!nodeMap["q0"]) return;
     if(isRunningStepWise){
       handleStepWise();
     }else{
       resetStepWise();
-      setCurrNode(nodes[0]);
+      setCurrNode([nodeMap["q0"]]);
       setIsRunningStepWise(true);
     }
   }
-
   const resetStepWise = () => {
-    setshowQuestion(false);
+    setShowQuestion(false);
     setSelectedNode(null)
     setValidationResult(null)
     setCurrNode(null);
     setHighlightedTransition(null);
     setStepIndex(0);
+  };
+
+  const NFARUN = () => {
+    if (isRunning) return;
+    setIsRunning(true);
+    if (isRunningStepWise) setIsRunningStepWise(false);
+    setShowQuestion(false);
+    setSelectedNode(null);
+    setHighlightedTransition([]);
+    setValidationResult(null);
+
+    setCurrNode([nodeMap["q0"]])
+    handleRunNFA([nodeMap["q0"]], 0)
+  }
+  const handleRunNFA = async (currentNodes, charIndex) => {
+    if (isRunning) return;
+    setIsRunning(true);
+    setStepIndex(charIndex);
+  
+    if (charIndex === inputString.length) {
+      setIsRunning(false);
+      if (currentNodes.some(node => finiteNodes.has(node.id))) {
+        setValidationResult("String is Valid");
+      } else {
+        setValidationResult("String is invalid");
+      }
+      return;
+    }
+  
+    const char = inputString[charIndex];
+    let nextNodes = [];
+    let transitionsToHighlight = [];
+    let noTransitionFound = true;
+  
+    for (const currNode of currentNodes) {
+      const transitions = transitionMap[currNode.id] || [];
+      const availablePaths = transitions.filter(t => t.label.split(',').includes(char));
+      const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
+
+      if (epsilonPaths.length > 0) {
+        for (const epsilon of epsilonPaths) {
+          const nextNode = getNodeById(epsilon.targetid);
+          if (nextNode) {
+            currentNodes.push(nextNode);
+            transitionsToHighlight.push(epsilon);
+          }
+        }
+        setCurrNode(currentNodes);
+      }
+      if (availablePaths.length > 0) {
+        for (const path of availablePaths) {
+          const nextNode = getNodeById(path.targetid);
+          if (nextNode) {
+            nextNodes.push(nextNode);
+            transitionsToHighlight.push(path);
+            noTransitionFound = false;
+          }
+        }
+      }
+    }
+    if (nextNodes.length === 0 && noTransitionFound) {
+      setIsRunning(false);
+      setShowQuestion(true);
+      setValidationResult(`String is invalid: No transition for '${char}' from any current state`);
+      return;
+    }
+    await sleep(500);
+    setCurrNode([]);
+    setHighlightedTransition(transitionsToHighlight);
+    await sleep(500);
+    setCurrNode(nextNodes);
+    await handleRunNFA(nextNodes, charIndex + 1);
+  };
+  
+  const handleNFAStep = async () => {
+    if (isRunning) return;
+
+    const char = inputString[stepIndex];
+    let currentNodes = currNode;
+    let nextNodes = [];
+    let transitionsToHighlight = [];
+
+    for (const currNode of currentNodes) {
+      if (!transitionMap[currNode.id]) continue;
+
+      const transitions = transitionMap[currNode.id];
+      const availablePaths = transitions.filter(t => t.label.split(',').includes(char));
+      const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
+  
+      if (epsilonPaths.length > 0) {
+        for (const epsilon of epsilonPaths) {
+          const nextNode = getNodeById(epsilon.targetid);
+          if (nextNode) {
+            currentNodes.push(nextNode);
+            transitionsToHighlight.push(epsilon);
+          }
+        }
+        setCurrNode(currentNodes);
+      }
+
+      for (const path of availablePaths) {
+        const nextNode = getNodeById(path.targetid);
+        if (nextNode && !nextNodes.includes(nextNode)) {
+          nextNodes.push(nextNode);
+          transitionsToHighlight.push(path);
+        }
+      }
+    }
+    if (nextNodes.length === 0 && transitionsToHighlight.length === 0) {
+      setIsRunningStepWise(false);
+      setShowQuestion(true);
+      setValidationResult(`String is invalid: No transition for ${char} from any current state`);
+      return;
+    }else{
+      //await sleep(300);
+      setHighlightedTransition(transitionsToHighlight);
+      setCurrNode([])
+      await sleep(500);
+      setCurrNode(nextNodes);
+      setStepIndex(stepIndex + 1);
+    }
+    if (stepIndex===inputString.length-1) {
+      const isValid = nextNodes.some(node => finiteNodes.has(node.id));
+      setValidationResult(isValid ? "String is Valid" : "String is invalid");
+      setIsRunningStepWise(false);
+      return;
+    }
+  };
+  const onNFAStepClick = () => {
+    if(isRunning)return
+    if (!isRunningStepWise) {
+      // Initialize stepwise run
+      resetStepWise();
+      setCurrNode([nodeMap["q0"]]);
+      setStepIndex(0);
+      setIsRunningStepWise(true);
+      setValidationResult(null);
+    } else {
+      handleNFAStep(); // Execute a single step
+    }
   };
 
   const drawGrid = (size, color) => {
@@ -335,7 +489,6 @@ const AutomataSimulator = () => {
     const startY = -stageProps.y / stageProps.scale;
     const endX = startX + stageWidth;
     const endY = startY + stageHeight;
-  
     for (let i = Math.floor(startX / size) * size; i < endX; i += size) {
       lines.push(
         <Line key={`v${i}`} points={[i, startY, i, endY]} stroke={color} strokeWidth={0.5} />
@@ -350,32 +503,24 @@ const AutomataSimulator = () => {
   };
 
   const handleWheel = (e) => {
-  e.evt.preventDefault();
-
-  const scaleBy = 1.1;
-  const stage = e.target.getStage();
-  const oldScale = stageProps.scale;
-  const pointer = stage.getPointerPosition();
-
-  // Calculate new scale
-  let newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
-
-  // Adjust position to zoom into the pointer position
-  const mousePointTo = {
-    x: (pointer.x - stageProps.x) / oldScale,
-    y: (pointer.y - stageProps.y) / oldScale,
+    e.evt.preventDefault();
+    const scaleBy = 1.1;
+    const stage = e.target.getStage();
+    const oldScale = stageProps.scale;
+    const pointer = stage.getPointerPosition();
+    let newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+    const mousePointTo = {
+      x: (pointer.x - stageProps.x) / oldScale,
+      y: (pointer.y - stageProps.y) / oldScale,
+    };
+    newScale = Math.min(Math.max(newScale, 0.5), 4.0); //limits
+    setStageProps((prev)=>({
+      x: pointer.x - mousePointTo.x * newScale,
+      y: pointer.y - mousePointTo.y * newScale,
+      scale: newScale,
+      draggable: prev.draggable
+    }));
   };
-
-  //limits
-  newScale = Math.min(Math.max(newScale, 0.5), 4.0);
-
-  setStageProps((prev)=>({
-    x: pointer.x - mousePointTo.x * newScale,
-    y: pointer.y - mousePointTo.y * newScale,
-    scale: newScale,
-    draggable: prev.draggable
-  }));
-};
 
   const handleDragMoveScreen = (e) => {
     setStageProps((prev) => ({
@@ -384,7 +529,6 @@ const AutomataSimulator = () => {
       y: e.target.y(),
     }));
   };
-
   const nodeMouseDown = () => {
     setStageProps((prev)=>({
       ...prev,
@@ -404,14 +548,13 @@ const AutomataSimulator = () => {
     targetX,
     targetY,
     radiusFactor,
-    nodeRadius = 20
+    nodeRadius
   ) => {
     const distance = Math.sqrt(
       Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2)
     );
     const centerX = (sourceX + targetX) / 2;
     const centerY = (sourceY + targetY) / 2;
-  
     let angle = Math.atan2(targetY - sourceY, targetX - sourceX);
     const curveOffset = distance / radiusFactor;
   
@@ -421,14 +564,11 @@ const AutomataSimulator = () => {
       centerY + curveOffset * Math.sin(angle + Math.PI / 2) * -1;
   
     const angleToTarget = Math.atan2(targetY - controlY, targetX - controlX);
-  
-    const endX = targetX - (nodeRadius+9) * Math.cos(angleToTarget);
-    const endY = targetY - (nodeRadius+9) * Math.sin(angleToTarget);
-  
+    const endX = targetX - (nodeRadius) * Math.cos(angleToTarget);
+    const endY = targetY - (nodeRadius) * Math.sin(angleToTarget);
     const angleToSource = Math.atan2(sourceY - controlY, sourceX - controlX);
-    const startX = sourceX - (nodeRadius+9) * Math.cos(angleToSource);
-    const startY = sourceY - (nodeRadius+9) * Math.sin(angleToSource);
-  
+    const startX = sourceX - (nodeRadius) * Math.cos(angleToSource);
+    const startY = sourceY - (nodeRadius) * Math.sin(angleToSource);
     return {
       startX,
       startY,
@@ -443,6 +583,7 @@ const AutomataSimulator = () => {
     const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     return Math.max(6, distance / 60);
   };
+
   return (
     <div style={{ position: "relative" }}>
       <button
@@ -462,17 +603,18 @@ const AutomataSimulator = () => {
       />
 
       <button
-        onClick={handleRun}
-        style={{ position: "absolute", bottom: 10, left: 230, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#32CD32" }}
+        onClick={automataType==="DFA"?handleRun:NFARUN}
+        style={{ position: "absolute", bottom: 10, left: 300, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#32CD32" }}
       >
         Run
       </button>
       <button
-        onClick={onStepWiseClick}
-        style={{ position: "absolute", bottom: 10, left: 300, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
+        onClick={automataType==="DFA"?onStepWiseClick:onNFAStepClick}
+        style={{ position: "absolute", bottom: 10, left: 370, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
       >
         Step
       </button>
+      {/**handleSetFinite */}
       {selectedNode && (
         <button
           onClick={handleSetFinite}
@@ -486,7 +628,7 @@ const AutomataSimulator = () => {
         <span style={{ position: "absolute", bottom: 5, right: 60, zIndex: 10, padding: 15, color: "grey" }}>Select a node to add transition</span>
       }
       {validationResult && (
-        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: validationResult.includes("String is Valid") ? "#32CD32" : "red", fontSize: 18, fontWeight: "bold" }}>
+        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: validationResult.includes("String is Valid") ? "#32CD32" : "red", backgroundColor:"white", fontSize: 18, fontWeight: "bold" }}>
           {validationResult}
         </div>
       )}
@@ -502,9 +644,19 @@ const AutomataSimulator = () => {
         />
       </label>
 
-      {/*Current Char Highlight*/}
+      <select style={{ position: "absolute", bottom: 12, left: 210, zIndex: 10, height:45,width:70,padding:10, color: "black" }}
+        value={automataType}
+        onChange={(e) => {setAutomataType(e.target.value)
+          setIsRunning(false)
+          setIsRunningStepWise(false);
+          resetStepWise()
+        }}
+      >
+        <option value="DFA">DFA</option>
+        <option value="NFA">NFA</option>
+      </select>
+
       {inputString.split('').map((char,index) => {
-          //{console.log(char,":",index,":",stepIndex)}
           return <span key={index} style={{position:"absolute",
             bottom:100, left:10+index*40,zIndex:100, 
             backgroundColor: (index===stepIndex)?"red":"white",
@@ -515,7 +667,7 @@ const AutomataSimulator = () => {
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
-        style={{ background: "white", cursor: stageProps.draggable && stageDragging? "grabbing": "default"}}
+        style={{ background:"white", cursor: stageProps.draggable && stageDragging? "grabbing": "default"}}
         x={stageProps.x}
         y={stageProps.y}
         draggable={stageProps.draggable && stageDragging}
@@ -530,11 +682,10 @@ const AutomataSimulator = () => {
         onPointerUp={(event)=> {if(event.evt.button === 1){
           setIsStageDragging(false);
         }}}
-
         //mobile
         onTouchStart={() => setIsStageDragging(true)}
-        onTouchEnd={() => setIsStageDragging(false)} 
-        
+        onTouchEnd={() => setIsStageDragging(false)}
+
         scaleX={stageProps.scale}  
         scaleY={stageProps.scale}  
       >
@@ -542,12 +693,22 @@ const AutomataSimulator = () => {
           {/* Grid Background */}
           {showGrid && drawGrid(20, "#9c9c9c")}
 
-          {nodes.map((node, index) => {
-            return node.transitions.map((transition, tindex) => {
-              const edge = { source: node, target: getNodeById(transition.targetid), label: transition.label };
-              let isReverse = nodes.some((n) => n.id === transition.targetid && n.transitions.some((t) => t.targetid === node.id));
+          {Object.entries(transitionMap).map(([key,transitions])=>{
+            return transitions.map((transition)=>{
+              const edge = { source: getNodeById(transition.sourceid), target: getNodeById(transition.targetid), label: transition.label };
+              let isReverse = false;
+              Object.entries(transitionMap).forEach(([k, Ts]) => {
+                Ts.forEach((t) => {
+                  if (t.sourceid === edge.target.id && t.targetid === edge.source.id) {
+                    isReverse = true;
+                  }
+                });
+              });
+
+              const isHighlighted = highlightedTransition && highlightedTransition.includes(transition);
+
               if (edge.source.id === edge.target.id) {
-                return drawSelfLoop(edge.source.x, edge.source.y, edge.label, index);
+                return drawSelfLoop(edge.source.x, edge.source.y, edge.label, key,isHighlighted);
               } else {
                 const { startX, startY, endX, endY,controlX,controlY } = isReverse? calculateCurvedArrowPoints(
                   edge.source.x,
@@ -555,7 +716,7 @@ const AutomataSimulator = () => {
                   edge.target.x,
                   edge.target.y,
                   calculateCurveStrength(edge.source.x, edge.source.y, edge.target.x, edge.target.y),
-                  20
+                  30
                 ):calculateArrowPoints(
                   edge.source.x,
                   edge.source.y,
@@ -563,11 +724,8 @@ const AutomataSimulator = () => {
                   edge.target.y,
                   30,
                 );
-                
-                const isHighlighted = highlightedTransition && highlightedTransition.d.targetid === transition.targetid && highlightedTransition.d.label === transition.label && highlightedTransition.target === edge.source.id;
-                
                 return (
-                  <Group key={transition.targetid + tindex}>
+                  <Group key={transition.targetid + key +transition.label}>
                     {(() => {
                       if (isReverse) {
                         return (
@@ -625,7 +783,6 @@ const AutomataSimulator = () => {
                         height={20}
                         fill="white"
                         opacity={0.8}
-                        zIndex={-100}
                         blurRadius={2}
                       />
                       <Text
@@ -656,7 +813,9 @@ const AutomataSimulator = () => {
               }
             })
           })}
-          {nodes.map((node) => {
+        
+          {Object.entries(nodeMap).map(([id,node])=>{
+            const isCurrent = Array.isArray(currNode) && currNode.some((n) => n.id === node.id);
             return (
               <Group key={node.id}
                 x={node.x}
@@ -668,7 +827,8 @@ const AutomataSimulator = () => {
                 onMouseUp={nodeMouseUp}
                 onDragMove={(e) => handleDragMove(e, node.id)}
               >
-                {showQuestion && currNode && (currNode.id === node.id)&&<Image image={image} width={30} height={25} x={23} y={-35}/>}
+                
+                {showQuestion && isCurrent &&<Image image={image} width={30} height={25} x={23} y={-35}/>}
                 {/*if node is first*/}
                 {node.id === 'q0' && (
                   <Arrow
@@ -684,7 +844,7 @@ const AutomataSimulator = () => {
                   x={0}
                   y={0}
                   radius={30}
-                  fill={selectedNode ? (selectedNode.id === node.id ? "rgba(207, 207, 255,1.0)" : "white") : (currNode && currNode.id === node.id ? (finiteNodes.has(currNode.id) ? "#32CD32" : "red") : "white")}
+                  fill={selectedNode ? (selectedNode.id === node.id ? "rgba(207, 207, 255,1.0)" : "white") : (isCurrent ? currNode.some((n) => n.id===node.id&&finiteNodes.has(node.id)) ? "#32CD32" : "red" : "white")}
                   stroke={selectedNode ? (selectedNode.id === node.id ? "rgba(89, 89, 255,1.0)" : "black") : "black"}
                   strokeWidth={selectedNode ? (selectedNode.id === node.id ? 2 : 1) : 1}
                 />
@@ -700,10 +860,10 @@ const AutomataSimulator = () => {
                   />
                 )}
                 <Text
-                  x={0 - node.id.length*5 + 10}
+                  x={0 - node.id.length*5 + 10}             
                   y={-7}
                   text={node.id}
-                  fill={currNode ? currNode.id === node.id ? "white" : "black" : "black"}
+                  fill={isCurrent ? "white" : "black"}
                   fontSize={16}
                   align="center"
                   verticalAlign="middle"
