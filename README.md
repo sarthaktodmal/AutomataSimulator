@@ -6,16 +6,17 @@ Automata Simulator is an interactive tool for designing and testing Deterministi
 
 ## Features
 
+- Supports DFA and NFA without epsilon Transitions
 - Create and position states (nodes) dynamically.
 - Define transitions by clicking on states and specifying symbols.
 - Set states as final states.
 - Visual representation of the automaton.
-- Run a string through the DFA and check if it is accepted.
+- Run a string through the simulator and check if it is accepted.
 - Step-by-step execution visualization.
 
 ## Future Enhancements
 
-- Support for Non-Deterministic Finite Automata (NFA).
+- Support for NFA with epsilon Transition.
 - Support for Pushdown Automata (PDA).
 - Save and load automata configurations.
 - Improved UI and additional customization options.
