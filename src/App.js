@@ -52,7 +52,7 @@ const AutomataSimulator = () => {
           if (timerId) clearTimeout(timerId);
           timerId = setTimeout(() => {
               setHighlightedTransition(null);
-          }, 400);
+          }, 500);
       }
       return () => {
           if (timerId) clearTimeout(timerId);
@@ -216,7 +216,17 @@ const AutomataSimulator = () => {
     );
   };
 
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const sleep = (ms) => new Promise((resolve) => {
+    const start = performance.now();
+    const frame = () => {
+      if (performance.now() - start >= ms) {
+        resolve();
+      } else {
+        requestAnimationFrame(frame);
+      }
+    };
+    requestAnimationFrame(frame);
+  });
   const getNodeById = (id) => nodeMap[id];
 
   const handleRun = async () => {
@@ -236,7 +246,7 @@ const AutomataSimulator = () => {
     for (const char of inputString) {
       const transitions = transitionMap[mcurrNode.id];
       const transition = transitions?transitions.filter((t) => t.label.split(',').includes(char)):null;
-      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('e')):null;
+      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('ε')):null;
       
       if(epsilonPaths&&epsilonPaths.length>=1){
         setShowQuestion(true);
@@ -282,7 +292,7 @@ const AutomataSimulator = () => {
     if (inputString && mcurrNode) {
       const transitions = transitionMap[mcurrNode.id];
       const transition = transitions?transitions.filter((t) => t.label.split(',').includes(char)):null;
-      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('e')):null;
+      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('ε')):null;
       
       if(epsilonPaths&&epsilonPaths.length>=1){
         setShowQuestion(true);
@@ -372,11 +382,11 @@ const AutomataSimulator = () => {
     let noTransitionFound = true;
   
     for (const currNode of currentNodes) {
-      const transitions = transitionMap[currNode.id] || [];
-      const availablePaths = transitions.filter(t => t.label.split(',').includes(char)); 
-      const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
+      const transitions = transitionMap[currNode.id];
+      const availablePaths = transitions?transitions.filter(t => t.label.split(',').includes(char)):null; 
+      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('ε')):null;
 
-      if (epsilonPaths.length > 0) {
+      if (epsilonPaths&&epsilonPaths.length > 0) {
         for (const epsilon of epsilonPaths) {
           const nextNode = getNodeById(epsilon.targetid);
           if (nextNode) {
@@ -386,7 +396,7 @@ const AutomataSimulator = () => {
         }
         setCurrNode(currentNodes);
       }
-      if (availablePaths.length > 0) {
+      if (availablePaths&&availablePaths.length > 0) {
         for (const path of availablePaths) {
           const nextNode = getNodeById(path.targetid);
           if (nextNode) {
@@ -423,10 +433,10 @@ const AutomataSimulator = () => {
       if (!transitionMap[currNode.id]) continue;
 
       const transitions = transitionMap[currNode.id];
-      const availablePaths = transitions.filter(t => t.label.split(',').includes(char));
-      const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
-  
-      if (epsilonPaths.length > 0) {
+      const availablePaths = transitions?transitions.filter(t => t.label.split(',').includes(char)):null; 
+      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('ε')):null;
+
+      if (epsilonPaths&&epsilonPaths.length > 0) {
         for (const epsilon of epsilonPaths) {
           const nextNode = getNodeById(epsilon.targetid);
           if (nextNode) {
@@ -436,12 +446,13 @@ const AutomataSimulator = () => {
         }
         setCurrNode(currentNodes);
       }
-
-      for (const path of availablePaths) {
-        const nextNode = getNodeById(path.targetid);
-        if (nextNode && !nextNodes.includes(nextNode)) {
-          nextNodes.push(nextNode);
-          transitionsToHighlight.push(path);
+      if (availablePaths&&availablePaths.length > 0) {
+        for (const path of availablePaths) {
+          const nextNode = getNodeById(path.targetid);
+          if (nextNode && !nextNodes.includes(nextNode)) {
+            nextNodes.push(nextNode);
+            transitionsToHighlight.push(path);
+          }
         }
       }
     }
