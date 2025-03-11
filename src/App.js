@@ -235,10 +235,8 @@ const AutomataSimulator = () => {
   
     for (const char of inputString) {
       const transitions = transitionMap[mcurrNode.id];
-      const transition = transitions&&transitions.filter((t) =>
-        t.label.split(',').includes(char)
-      );
-      const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
+      const transition = transitions?transitions.filter((t) => t.label.split(',').includes(char)):null;
+      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('e')):null;
       
       if(epsilonPaths&&epsilonPaths.length>=1){
         setShowQuestion(true);
@@ -283,8 +281,8 @@ const AutomataSimulator = () => {
 
     if (inputString && mcurrNode) {
       const transitions = transitionMap[mcurrNode.id];
-      const transition = transitions&&transitions.filter((t) => t.label.split(',').includes(char));
-      const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
+      const transition = transitions?transitions.filter((t) => t.label.split(',').includes(char)):null;
+      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('e')):null;
       
       if(epsilonPaths&&epsilonPaths.length>=1){
         setShowQuestion(true);
@@ -375,7 +373,7 @@ const AutomataSimulator = () => {
   
     for (const currNode of currentNodes) {
       const transitions = transitionMap[currNode.id] || [];
-      const availablePaths = transitions.filter(t => t.label.split(',').includes(char));
+      const availablePaths = transitions.filter(t => t.label.split(',').includes(char)); 
       const epsilonPaths = transitions.filter(t => t.label.split(',').includes('e'));
 
       if (epsilonPaths.length > 0) {

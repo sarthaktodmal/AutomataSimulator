@@ -4,22 +4,17 @@
   "private": true,
   "dependencies": {
     "cra-template": "1.2.0",
-    "cytoscape": "^3.31.0",
-    "d3": "^7.9.0",
     "konva": "^9.3.18",
     "react": "^19.0.0",
-    "react-cytoscapejs": "^2.0.0",
     "react-dom": "^19.0.0",
     "react-konva": "^19.0.2",
     "react-scripts": "5.0.1",
-    "reactflow": "^11.11.4",
     "web-vitals": "^4.2.4"
   },
   "homepage": "https://sarthaktodmal.github.io/AutomataSimulator",
   "scripts": {
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
-
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
