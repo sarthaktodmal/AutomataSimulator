@@ -28,9 +28,8 @@ color: #333;
 }
 
 .popupInput {
-width: 250px;
+width: 180px;
 padding: 10px;
-margin-bottom: 20px;
 border: 1px solid #ccc;
 border-radius: 4px;
 font-size: 1em;
@@ -65,4 +64,18 @@ color: white;
 .popupButton:last-child {
 background-color: white;
 color: black;
+}
+
+.inputDiv{
+    display: flex;
+    justify-content: space-evenly;
+    margin-bottom: 20px;
+}
+.epsilonButt{
+    border: 1px solid black;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.epsilonButt:hover {
+    opacity: 0.8;
 }
