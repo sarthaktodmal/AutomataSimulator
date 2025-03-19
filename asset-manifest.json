@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "/AutomataSimulator/static/css/main.7f714c13.css",
-    "main.js": "/AutomataSimulator/static/js/main.9cc9f38c.js",
+    "main.css": "/AutomataSimulator/static/css/main.8c1a3c43.css",
+    "main.js": "/AutomataSimulator/static/js/main.4845aa6d.js",
     "static/js/488.51ab77c5.chunk.js": "/AutomataSimulator/static/js/488.51ab77c5.chunk.js",
     "static/media/q3.png": "/AutomataSimulator/static/media/q3.aacfe1fb481353903b2b.png",
     "static/media/delete.png": "/AutomataSimulator/static/media/delete.42c65989243afa17f9e3.png",
     "index.html": "/AutomataSimulator/index.html",
-    "main.7f714c13.css.map": "/AutomataSimulator/static/css/main.7f714c13.css.map",
-    "main.9cc9f38c.js.map": "/AutomataSimulator/static/js/main.9cc9f38c.js.map",
+    "main.8c1a3c43.css.map": "/AutomataSimulator/static/css/main.8c1a3c43.css.map",
+    "main.4845aa6d.js.map": "/AutomataSimulator/static/js/main.4845aa6d.js.map",
     "488.51ab77c5.chunk.js.map": "/AutomataSimulator/static/js/488.51ab77c5.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.7f714c13.css",
-    "static/js/main.9cc9f38c.js"
+    "static/css/main.8c1a3c43.css",
+    "static/js/main.4845aa6d.js"
   ]
 }
