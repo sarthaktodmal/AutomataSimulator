@@ -1,20 +1,23 @@
-import React, { useState,useEffect } from "react";
+import React, { useState,useEffect,useRef } from "react";
 import { Stage, Layer, } from "react-konva";
 import InputPopup from './components/InputPopup';
 import ReactDOM from 'react-dom';
 import DrawTransitions from "./draw/DrawTransitions";
 import DrawNodes from "./draw/DrawNodes";
 import DrawGrid from "./draw/DrawGrid";
+import { DPDA, DPDAStep } from "./logic/DPDA"
+import { DFA, DFAStep }from './logic/DFA'
+import { NFA, NFAStep }from './logic/NFA'
 
 const AutomataSimulator = () => {
   const [nodeMap, setNodeMap] = useState({});
   const [transitionMap, setTransitionMap] = useState({});
   const [selectedNode, setSelectedNode] = useState(null);
-  const [finiteNodes, setFiniteNodes] = useState(new Set());
+  const [finalNodes, setFinalNodes] = useState(new Set());
   const [inputString, setInputString] = useState("");
   const [currNode, setCurrNode] = useState([]);
   const [nodeNum, setNodeNum] = useState(0);
-  const [validationResult, setValidationResult] = useState(null);
+  const [acceptanceResult, setAcceptanceResult] = useState(null);
   const [stageProps, setStageProps] = useState({
     x: 0,
     y: 0,
@@ -22,7 +25,6 @@ const AutomataSimulator = () => {
     draggable: true
   });
   const [stageDragging, setIsStageDragging] = useState(false);
-  const [showGrid, setShowGrid] = useState(true);
 
   const [highlightedTransition, setHighlightedTransition] = useState([]);
   const [currEpsilonTrans, setCurrEpsilonTrans] = useState([]);
@@ -44,6 +46,12 @@ const AutomataSimulator = () => {
   //DFA OR NFA
   const [automataType,setAutomataType] = useState("DFA");
 
+  //PDA STACK
+  const [stack, setStack] = useState(['z₀']);
+
+  //Loading
+  const fileInputRef = useRef(null);
+
   useEffect(() => {
     const img = new window.Image();
     img.src = require("./assets/q3.png");
@@ -52,11 +60,11 @@ const AutomataSimulator = () => {
     };
   }, []);
 
-  const highlightTransitions = (transitions) => {
+  const highlightTransitions = (transitions,time=500) => {
     setHighlightedTransition(transitions);
     setTimeout(() => {
       setHighlightedTransition([]);
-    }, 500);
+    }, time);
   };  
 
   const handleAddNode = () => {
@@ -93,7 +101,7 @@ const AutomataSimulator = () => {
           });
           return { ...updatedTransitionMap };
         });        
-        setFiniteNodes((prev) => 
+        setFinalNodes((prev) => 
           new Set([...prev].filter(nodeid => nodeid !== selectedNode.id))
         );
         setSelectedNode(null);
@@ -117,10 +125,17 @@ const AutomataSimulator = () => {
           (t) => t.targetid === targetNode.id
         );
         if (existingTransition) {
-          const existingSymbols = new Set(existingTransition.label.split(','));
-          const newSymbols = symbol.split(',').map((s) => s.trim());
-          newSymbols.forEach((s) => existingSymbols.add(s));
-          existingTransition.label = Array.from(existingSymbols).join(',');
+            if(automataType!=="DPDA"){
+              const existingSymbols = new Set(existingTransition.label.split(','));
+              const newSymbols = symbol.split(',').map((s) => s.trim());
+              newSymbols.forEach((s) => existingSymbols.add(s));
+              existingTransition.label = Array.from(existingSymbols).join(',');  
+            }else{
+              const existingSymbols = new Set(existingTransition.label.split(' | '));
+              const newSymbols = symbol.split(' | ').map((s) => s.trim());
+              newSymbols.forEach((s) => existingSymbols.add(s));
+              existingTransition.label = Array.from(existingSymbols).join(' | ');    
+            }
         } else {
           const newTransition = {
             label: symbol.split(',').map((s) => s.trim()).join(','),
@@ -145,16 +160,15 @@ const AutomataSimulator = () => {
 
   const handleNodeClick = (node) => {
     if(isRunning)return
-    ReactDOM.unstable_batchedUpdates(() => {
-      setIsStepCompleted(true);
-      setIsRunningStepWise(false);
-      setShowQuestion(false);
-      setValidationResult(null)
-      setCurrEpsilonTrans([])
-      setCurrNode([]);
-      setStepIndex(0);
-      setHighlightedTransition([]);
-    });
+    setIsStepCompleted(true);
+    setIsRunningStepWise(false);
+    setShowQuestion(false);
+    setAcceptanceResult(null)
+    setCurrEpsilonTrans([])
+    setCurrNode([]);
+    setStepIndex(0);
+    setHighlightedTransition([]);
+    setStack(['z₀'])
 
     if (!selectedNode) {
       setSelectedNode(node);
@@ -166,142 +180,48 @@ const AutomataSimulator = () => {
   const handleStageClick = (e) => {
     if (e.target === e.target.getStage()) {
       setSelectedNode(null);
+      setStageProps((prev)=>({
+        ...prev,
+        draggable: true
+      }));
     }
   };
 
-  const handleSetFinite = () => {
+  const handleSetFinal = () => {
     if (selectedNode) {
-      setFiniteNodes((prev) => {
-        const newFiniteNodes = new Set(prev);
-        if (newFiniteNodes.has(selectedNode.id)) {
-          newFiniteNodes.delete(selectedNode.id);
+      setFinalNodes((prev) => {
+        const newFinalNodes = new Set(prev);
+        if (newFinalNodes.has(selectedNode.id)) {
+          newFinalNodes.delete(selectedNode.id);
         } else {
-          newFiniteNodes.add(selectedNode.id);
+          newFinalNodes.add(selectedNode.id);
         }
-        return newFiniteNodes;
+        return newFinalNodes;
       });
       setSelectedNode(null)
     }
   };
-
-  const sleep = (ms) => new Promise((resolve) => {
-    const start = performance.now();
-    const frame = () => {
-      if (performance.now() - start >= ms) {
-        resolve();
-      } else {
-        requestAnimationFrame(frame);
-      }
-    };
-    requestAnimationFrame(frame);
-  });
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   const getNodeById = (id) => nodeMap[id];
 
+  //RUN DFA
   const handleRun = async () => {
     if (!nodeMap["q0"]) return;
     if (isRunning) return;
-    let mcurrNode = nodeMap["q0"];
     ReactDOM.unstable_batchedUpdates(()=>{
       setIsRunning(true);
       if (isRunningStepWise) setIsRunningStepWise(false);
       setShowQuestion(false);
       setSelectedNode(null);
-      setHighlightedTransition(null);
-      setValidationResult(null);
+      setHighlightedTransition([]);
+      setAcceptanceResult(null);
       setStepIndex(0);
-      setCurrNode([mcurrNode]);
     })
-  
-  
-    for (const char of inputString) {
-      const transitions = transitionMap[mcurrNode.id];
-      const transition = transitions?transitions.filter((t) => t.label.split(',').includes(char)):null;
-      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('ε')):null;
-      
-      if(epsilonPaths&&epsilonPaths.length>=1){
-        setShowQuestion(true);
-        setIsRunning(false)
-        setValidationResult("Epsilon Transitions not allowed in DFA")
-        return;
-      }
-      await sleep(500);
-      if(transition&&transition.length>1){
-        setShowQuestion(true);
-        setIsRunning(false)
-        setValidationResult("Multiple Transitions for Same Symbol")
-        return;
-      }
-      if (!transition || transition.length<=0) {
-        setShowQuestion(true);
-        setIsRunning(false);
-        setValidationResult(`No transition for '${char}'`);
-        return;
-      }
-      const nextNode = getNodeById(transition[0].targetid);
-      highlightTransitions(transition)
-      setCurrNode([]);
-      await sleep(500);
-      setCurrNode([nextNode]);
-      mcurrNode = nextNode;
-      setStepIndex((prevStepIndex) => prevStepIndex + 1);
-    }
-    
-    if (mcurrNode && finiteNodes.has(mcurrNode.id)) {
-      setValidationResult("String is Valid");
-    } else {
-      setValidationResult("String is invalid");
-    }
-    setIsRunning(false);
+    DFA(inputString,transitionMap,nodeMap,setShowQuestion,setIsRunning,setAcceptanceResult,
+      sleep,highlightTransitions,setCurrNode,setStepIndex,finalNodes,getNodeById)
   };
-  
-  const handleStepWise = async () => {
-    if (selectedNode) setSelectedNode(null);
-    if (!isStepCompleted) return;
-    setIsStepCompleted(false);
-    const char = inputString[stepIndex];
-    let mcurrNode = currNode[0];
 
-    if (inputString && mcurrNode) {
-      const transitions = transitionMap[mcurrNode.id];
-      const transition = transitions?transitions.filter((t) => t.label.split(',').includes(char)):null;
-      const epsilonPaths = transitions?transitions.filter(t => t.label.split(',').includes('ε')):null;
-      
-      if(epsilonPaths&&epsilonPaths.length>=1){
-        setShowQuestion(true);
-        setIsRunningStepWise(false)
-        setValidationResult("Epsilon Transitions not allowed in DFA")
-        return;
-      }
-      if(transition&&transition.length>1){
-        setShowQuestion(true);
-        setIsRunningStepWise(false)
-        setValidationResult("Multiple Transitions for Same Symbol")
-        return;
-      }
-      if (!transition || transition.length<=0) {
-        setIsRunningStepWise(false);
-        setShowQuestion(true);
-        setValidationResult(`No transition for '${char}'`);
-        return;
-      }
-      setCurrNode([])
-      highlightTransitions(transition)
-      await sleep(500);
-      const nextNode = getNodeById(transition[0].targetid);
-      setCurrNode([nextNode]);
-      mcurrNode = nextNode;
-    }
-    if (stepIndex >= inputString.length - 1) {
-      setIsRunningStepWise(false);
-      if (mcurrNode && finiteNodes.has(mcurrNode.id)) {
-        setValidationResult("String is Valid");
-      } else {
-        setValidationResult("String is invalid");
-      }
-    }
-    setStepIndex((prevStepIndex) => prevStepIndex + 1);
-    setIsStepCompleted(true);
-  };
+  //Prepare Stepwise DFA
   const onStepWiseClick = async() => {
     if(isRunning) return;
     if(!nodeMap["q0"]) return;
@@ -313,11 +233,20 @@ const AutomataSimulator = () => {
       setIsRunningStepWise(true);
     }
   }
+  const handleStepWise = async () => {
+    if (selectedNode) setSelectedNode(null);
+    if (!isStepCompleted) return;
+    setIsStepCompleted(false);
+    DFAStep(
+      inputString,stepIndex,setStepIndex,currNode,setCurrNode,transitionMap
+      ,setShowQuestion,setIsRunningStepWise,setAcceptanceResult,highlightTransitions
+      ,sleep,getNodeById,setIsStepCompleted,finalNodes)
+  };
   const resetStepWise = () => {
     ReactDOM.unstable_batchedUpdates(()=>{
       setShowQuestion(false);
       setSelectedNode(null)
-      setValidationResult(null)
+      setAcceptanceResult(null)
       setCurrNode([]);
       setIsStepCompleted(true);
       setHighlightedTransition([]);
@@ -325,28 +254,15 @@ const AutomataSimulator = () => {
     })
   };
 
-  const NFARUN = () => {
-    if (isRunning) return;
-    setIsRunning(true);
-    if (isRunningStepWise) setIsRunningStepWise(false);
-    ReactDOM.unstable_batchedUpdates(() => {
-      setShowQuestion(false);
-      setSelectedNode(null);
-      setValidationResult(null);
-      setCurrNode(epsilonClosure([nodeMap["q0"]]))
-    })
-    handleRunNFA([nodeMap["q0"]],0)
-  }
+  //NFA
   const epsilonClosure = (nodes) => {
     const closure = new Set(nodes);
     const stack = [...nodes];
     let epsPath = []
-
     while (stack.length > 0) {
       const node = stack.pop();
       const transitions = transitionMap[node.id] || [];
       const epsilonPaths = transitions.filter(t => t.label.split(',').includes('ε'));
-
       for (const epsilon of epsilonPaths) {
         const nextNode = getNodeById(epsilon.targetid);
         epsPath.push(epsilon)
@@ -359,111 +275,18 @@ const AutomataSimulator = () => {
     setCurrEpsilonTrans(epsPath)
     return Array.from(closure);
   };
-  const handleRunNFA = async (currentNodes, charIndex) => {
+  const NFARUN = () => {
     if (isRunning) return;
     setIsRunning(true);
-    setStepIndex(charIndex);
-    currentNodes = epsilonClosure(currentNodes)
-
-    if (charIndex === inputString.length) {
-      setIsRunning(false);
-      if (currentNodes.some(node => finiteNodes.has(node.id))) {
-        setValidationResult("String is Valid");
-      } else {
-        setValidationResult("String is invalid");
-      }
-      return;
-    }
-    const char = inputString[charIndex];
-    let nextNodes = [];
-    let transitionsToHighlight = [];
-    let noTransitionFound = true;
-  
-    for (const currNode of currentNodes) {
-      const transitions = transitionMap[currNode.id];
-      const availablePaths = transitions?transitions.filter(t => t.label.split(',').includes(char)):[]; 
-  
-      if (availablePaths&&availablePaths.length > 0) {
-        for (const path of availablePaths) {
-          const nextNode = getNodeById(path.targetid);
-          if (nextNode) {
-            nextNodes.push(nextNode);
-            transitionsToHighlight.push(path);
-            noTransitionFound = false;
-          }
-        }
-      }
-    }
-    if (nextNodes.length === 0 && noTransitionFound) {
-      setIsRunning(false);
-      setShowQuestion(true);
-      setValidationResult(`String is invalid: No transition for '${char}' from any current state`);  
-      return;
-    }
-    await sleep(500);
-    setCurrNode([]);
-    highlightTransitions(transitionsToHighlight);
-    setCurrEpsilonTrans([])
-    await sleep(500);
-    setCurrNode(epsilonClosure(nextNodes));
-    await handleRunNFA(nextNodes, charIndex + 1);
-  };
-  
-  const handleNFAStep = async () => {
-    if (isRunning) return;
-    if (!isStepCompleted) return;
-    setIsStepCompleted(false);
-    const char = inputString[stepIndex];
-    let currentNodes = epsilonClosure(currNode);
-    let nextNodes = [];
-    let transitionsToHighlight = [];
-
-    if(!char){
-      const isValid = currentNodes.some(node => finiteNodes.has(node.id));
-      setValidationResult(isValid ? "String is Valid" : "String is invalid");
-      setIsRunningStepWise(false);
-      return;
-    }
-    for (const currNode of currentNodes) {
-      if (!transitionMap[currNode.id]) continue;
-      const transitions = transitionMap[currNode.id];
-      const availablePaths = transitions?transitions.filter(t => t.label.split(',').includes(char)):null;
-      if (availablePaths&&availablePaths.length > 0) {
-        for (const path of availablePaths) {
-          const nextNode = getNodeById(path.targetid);
-          if (nextNode && !nextNodes.includes(nextNode)) {
-            nextNodes.push(nextNode);
-            transitionsToHighlight.push(path);
-          }
-        }
-      }
-    }
-    if (nextNodes.length === 0 && transitionsToHighlight.length === 0) {
-      setIsRunningStepWise(false);
-      setShowQuestion(true);
-      setValidationResult(`String is invalid: No transition for '${char}' from any current state`);
-      return;
-    }else{
-      ReactDOM.unstable_batchedUpdates(() => {
-      highlightTransitions(transitionsToHighlight)
-      setCurrEpsilonTrans([])
-      setCurrNode([])
-      })
-      await sleep(500);
-      ReactDOM.unstable_batchedUpdates(() => {
-        nextNodes = epsilonClosure(nextNodes)
-        setCurrNode(nextNodes);
-        setStepIndex(stepIndex + 1);
-      })
-    }
-    if (stepIndex===inputString.length-1) {
-      const isValid = nextNodes.some(node => finiteNodes.has(node.id));
-      setValidationResult(isValid ? "String is Valid" : "String is invalid");
-      setIsRunningStepWise(false);
-      return;
-    }
-    setIsStepCompleted(true);
-  };
+    if (isRunningStepWise) setIsRunningStepWise(false);
+    setShowQuestion(false);
+    setSelectedNode(null);
+    setAcceptanceResult(null);
+    setCurrNode(epsilonClosure([nodeMap["q0"]]))
+    NFA([nodeMap["q0"]],setStepIndex,sleep,inputString,
+      setIsRunning,finalNodes,setAcceptanceResult,transitionMap,getNodeById,setShowQuestion,
+      setCurrNode,highlightTransitions,setCurrEpsilonTrans,epsilonClosure)
+  }
   const onNFAStepClick = () => {
     if(isRunning)return
     if (!isRunningStepWise) {
@@ -471,13 +294,54 @@ const AutomataSimulator = () => {
       resetStepWise();
       ReactDOM.unstable_batchedUpdates(() => {
         setCurrNode(epsilonClosure([nodeMap["q0"]]))
+        setIsRunningStepWise(true);
+        setIsStepCompleted(true)
+      })
+    } else {
+      if (isRunning) return;
+      if (!isStepCompleted) return;
+      NFAStep(currNode,setStepIndex,stepIndex,sleep,inputString,
+        setIsRunningStepWise,finalNodes,setAcceptanceResult,transitionMap,getNodeById,setShowQuestion,
+        setCurrNode,highlightTransitions,setCurrEpsilonTrans,setIsStepCompleted,epsilonClosure); // Execute a single step
+    }
+  };
+
+  //DPDA
+  const handleRunDPDA = async () => {
+    if (!nodeMap["q0"]) return;
+    if (isRunning) return;
+    ReactDOM.unstable_batchedUpdates(() => {
+      setIsRunning(true);
+      if (isRunningStepWise) setIsRunningStepWise(false);
+      setShowQuestion(false);
+      setSelectedNode(null);
+      setHighlightedTransition([]);
+      setAcceptanceResult(null);
+      setStepIndex(0);
+    })
+    DPDA(nodeMap["q0"], setIsRunning, setCurrNode, inputString, transitionMap,
+      setStack,sleep,highlightTransitions,getNodeById,
+      setStepIndex,finalNodes,setAcceptanceResult,setShowQuestion
+    )
+  };
+  const handleStepDPDA = async () => {
+    if(isRunning)return
+    if (!isRunningStepWise) {
+      // Initialize stepwise run
+      resetStepWise();
+      ReactDOM.unstable_batchedUpdates(() => {
+        setCurrNode([nodeMap["q0"]])
         setStepIndex(0);
         setIsRunningStepWise(true);
         setIsStepCompleted(true)
-        setValidationResult(null);
+        setAcceptanceResult(null);
+        setStack(['z₀'])
       })
     } else {
-      handleNFAStep(); // Execute a single step
+      DPDAStep(currNode, setCurrNode, inputString, transitionMap,
+        stack,setStack,sleep,highlightTransitions,getNodeById,stepIndex,
+        setStepIndex,finalNodes,setAcceptanceResult,setShowQuestion,setIsRunningStepWise
+      )
     }
   };
 
@@ -521,6 +385,73 @@ const AutomataSimulator = () => {
     }));
   }
 
+  //IMPORT EXPORT
+  //Function to trigger the file input dialog
+  const handleImportClick = () => {
+    fileInputRef.current.click();
+  };
+  // Function to handle file selection
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          setNodeMap(importedData.nodeMap || {});
+          setTransitionMap(importedData.transitionMap || {});
+          setFinalNodes(new Set(importedData.finalNodes) || new Set());
+          setNodeNum(importedData.nodeNum || 0);
+          setAutomataType(importedData.automataType || "DFA");
+          setInputString(importedData.inputString || "");
+          setStageProps(importedData.stageProps || { x: 0,y: 0,scale: 1,draggable: true})
+        } catch (error) {
+          console.error("Error parsing imported data:", error);
+          alert("Failed to import data. Invalid file format.");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+  const handleExportClick = () => {
+    const data = {
+      nodeMap,
+      transitionMap,
+      finalNodes: Array.from(finalNodes),
+      nodeNum,
+      automataType,
+      inputString,
+      stageProps
+    };
+    const json = JSON.stringify(data);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `automata_${automataType}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  //RUN STEP BUTTONS
+  function run(){
+    switch (automataType){
+      case "DFA": return handleRun
+      case "NFA": return NFARUN
+      case "DPDA": return handleRunDPDA
+      default: console.error("Wrong Automata Type")
+    }
+  }
+  function step(){
+    switch (automataType){
+      case "DFA": return onStepWiseClick
+      case "NFA": return onNFAStepClick
+      case "DPDA": return handleStepDPDA
+      default: console.error("Wrong Automata Type")
+    }
+  }
   return (
     <div style={{ position: "relative" }}>
       <button
@@ -529,35 +460,47 @@ const AutomataSimulator = () => {
       >
         Add Node
       </button>
+      <button
+        onClick={handleImportClick}
+        style={{ position: "absolute", top: 10, right: 80, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
+      >
+        Import
+      </button>
+      <button
+        onClick={handleExportClick}
+        style={{ position: "absolute", top: 10, right: 10, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
+      >
+        Export
+      </button>
       <input
         inputMode="text"
         placeholder="Enter String"
         value={inputString}
-        maxLength={38}
+        maxLength={33}
         readOnly={isRunning || isRunningStepWise}
         onChange={(e) => setInputString(e.target.value.trim()) }
         style={{ position: "absolute", bottom: 10, left: 10, zIndex: 10, padding: 15 }}
       />
 
       <button
-        onClick={automataType==="DFA"?handleRun:NFARUN}
-        style={{ position: "absolute", bottom: 10, left: 300, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#32CD32" }}
+        onClick={run()}
+        style={{ position: "absolute", bottom: 10, left: 310, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#32CD32" }}
       >
         Run
       </button>
       <button
-        onClick={automataType==="DFA"?onStepWiseClick:onNFAStepClick}
-        style={{ position: "absolute", bottom: 10, left: 370, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
+        onClick={step()}
+        style={{ position: "absolute", bottom: 10, left: 380, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
       >
         Step
       </button>
-      {/**handleSetFinite */}
+      {/**handleSetFinal */}
       {selectedNode && (
         <button
-          onClick={handleSetFinite}
+          onClick={handleSetFinal}
           style={{ position: "absolute", top: 10, left: 120, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "black" }}
         >
-          Set Finite
+          Set Final
         </button>
       )}
       {selectedNode&&selectedNode.id!=="q0"&&(
@@ -573,24 +516,13 @@ const AutomataSimulator = () => {
       {selectedNode &&
         <span style={{ position: "absolute", bottom: 5, right: 60, zIndex: 10, padding: 15, color: "grey" }}>Select a node to add transition</span>
       }
-      {validationResult && (
-        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: validationResult.includes("String is Valid") ? "#32CD32" : "red", backgroundColor:"white", fontSize: 18, fontWeight: "bold" }}>
-          {validationResult}
+      {acceptanceResult && (
+        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: acceptanceResult.toLowerCase().includes("accepted") ? "#32CD32" : "red", backgroundColor:"white", fontSize: 18, fontWeight: "bold" }}>
+          {acceptanceResult}
         </div>
       )}
 
-      {/* Checkbox to toggle grid visibility */}
-      <label style={{ position: "absolute", top: 10, right: 10, zIndex: 10, color: "black" }}>
-        Grid
-        <input
-          type="checkbox"
-          checked={showGrid}
-          onChange={() => setShowGrid(!showGrid)}
-          style={{marginLeft: 5}}
-        />
-      </label>
-
-      <select style={{ position: "absolute", bottom: 12, left: 210, zIndex: 10, height:45,width:70,padding:10, color: "black" }}
+      <select style={{ position: "absolute", bottom: 12, left: 210, zIndex: 10, height:45,width:80,padding:10, color: "black" }}
         value={automataType}
         onChange={(e) => {setAutomataType(e.target.value)
           setIsRunning(false)
@@ -600,6 +532,7 @@ const AutomataSimulator = () => {
       >
         <option value="DFA">DFA</option>
         <option value="NFA">NFA</option>
+        <option value="DPDA">DPDA</option>
       </select>
 
       {inputString.split('').map((char,index) => {
@@ -607,9 +540,30 @@ const AutomataSimulator = () => {
             bottom:100, left:10+index*40,zIndex:100, 
             backgroundColor: (index===stepIndex)?"red":"white",
             color:(index===stepIndex)?"white":"black",
+            userSelect:"none",
             padding:10, borderStyle:"solid", borderRadius:5, borderWidth:1}}>{char}</span>
         })}
 
+      {automataType==="DPDA"&&stack.map((element,index)=>{
+        return (
+          <span key={`${element}-${index}`} style={{position:"absolute",
+          bottom:100+(index*24), right:(index===stack.length-1)?53:55,zIndex:100,
+          width:100,
+          textAlign:"center",
+          backgroundColor:"white",
+          color:"black",
+          userSelect:"none",
+          borderWidth:(index===stack.length-1)?3:1,
+          padding:2, borderStyle:"solid", borderRadius:0,}}>{element}</span>
+        )
+      })}
+
+      {automataType==="DPDA"&&
+        <span style={{position:"absolute",
+          userSelect:"none",
+          bottom:75, right:85,zIndex:100}}>Stack</span>
+      }
+    
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
@@ -637,11 +591,11 @@ const AutomataSimulator = () => {
       >
         <Layer>
           {/* Grid Background */}
-          {showGrid && <DrawGrid
+          <DrawGrid
             size={20}
             color={"#9c9c9c"}
             stageProps={stageProps}
-          />}
+          />
 
           {/* Render Transitions */}
           {Object.entries(transitionMap).map(([key,transitions])=>{
@@ -667,7 +621,7 @@ const AutomataSimulator = () => {
                 node={node}
                 currNode={currNode}
                 selectedNode={selectedNode}
-                finiteNodes={finiteNodes}
+                finalNodes={finalNodes}
                 showQuestion={showQuestion}
                 handleNodeClick={handleNodeClick}
                 handleDragMove={handleDragMove}
@@ -684,8 +638,16 @@ const AutomataSimulator = () => {
         isOpen={isPopupOpen}
         onClose={handleInputClose}
         onSubmit={handleSymbolInputSubmit}
+        automataType={automataType}
       />
       </div>
+      <input
+        type="file"
+        style={{ display: 'none' }}
+        accept=".json"
+        onChange={handleFileChange}
+        ref={fileInputRef}
+      />
     </div>
   );
 };

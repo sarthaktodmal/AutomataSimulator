@@ -1,7 +1,7 @@
 import {  Circle, Arrow, Text, Group, Image} from "react-konva";
 import React from 'react'
 
-const DrawNodes = ({node,currNode,selectedNode,finiteNodes,showQuestion,handleNodeClick,handleDragMove,nodeMouseDown,nodeMouseUp,questionImage}) => {
+const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNodeClick,handleDragMove,nodeMouseDown,nodeMouseUp,questionImage}) => {
     const isCurrent = Array.isArray(currNode) && currNode.some((n) => n.id === node.id);
     return (
         <Group
@@ -12,6 +12,8 @@ const DrawNodes = ({node,currNode,selectedNode,finiteNodes,showQuestion,handleNo
         onClick={()=>handleNodeClick(node)}
         onMouseDown={nodeMouseDown}
         onMouseUp={nodeMouseUp}
+        onTouchStart={nodeMouseDown}
+        onTouchEnd={nodeMouseUp}
         onDragMove={(e) => handleDragMove(e, node.id)}
         >
         
@@ -31,12 +33,14 @@ const DrawNodes = ({node,currNode,selectedNode,finiteNodes,showQuestion,handleNo
             x={0}
             y={0}
             radius={30}
-            fill={selectedNode ? (selectedNode.id === node.id ? "rgba(207, 207, 255,1.0)" : "white") : (isCurrent ? currNode.some((n) => n.id===node.id&&finiteNodes.has(node.id)) ? "#32CD32" : "red" : "white")}
+            fill={selectedNode ? (selectedNode.id === node.id ? "rgba(207, 207, 255,1.0)" : "white") : (isCurrent ? currNode.some((n) => n.id===node.id&&finalNodes.has(node.id)) ? "#32CD32" : "red" : "white")}
             stroke={selectedNode ? (selectedNode.id === node.id ? "rgba(89, 89, 255,1.0)" : "black") : "black"}
             strokeWidth={selectedNode ? (selectedNode.id === node.id ? 2 : 1) : 1}
+            //shadowBlur={10}
+            //shadowColor={selectedNode ? (selectedNode.id === node.id ? "rgba(89, 89, 255,1.0)" : "black") : (isCurrent ? currNode.some((n) => n.id===node.id&&finalNodes.has(node.id)) ? "#32CD32" : "red" : "black")}
         />
-        {/* Draw one black ring if the node is finite */}
-        {finiteNodes.has(node.id) && (
+        {/* Draw one black ring if the node is final */}
+        {finalNodes.has(node.id) && (
             <Circle
             x={0}
             y={0}
