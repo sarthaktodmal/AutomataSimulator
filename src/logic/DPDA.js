@@ -31,7 +31,6 @@ export async function DPDA(
             });
             return found;
         })
-
         if (!transition) {
             setShowQuestion(true);
             setIsRunning(false);
@@ -41,7 +40,7 @@ export async function DPDA(
         if (transition.length>1) {
             setShowQuestion(true);
             setIsRunning(false);
-            setAcceptanceResult(`String Rejected: Multiple transitions for'${char}'/'${mystack[mystack.length - 1]}'`);
+            setAcceptanceResult(`String Rejected: Multiple transitions for'${char}','${mystack[mystack.length - 1]}'`);
             return;
         }
         await sleep(500);
@@ -88,11 +87,12 @@ export async function DPDA(
 export async function DPDAStep(
     currNode,setCurrNode,inputString,
     transitionMap,stack,setStack,sleep,highlightTransitions,getNodeById,stepIndex,
-    setStepIndex,finalNodes,setAcceptanceResult,setShowQuestion,setIsRunningStepWise
+    setStepIndex,finalNodes,setAcceptanceResult,setShowQuestion,setIsRunningStepWise,
+    setIsStepCompleted
 ){
     let mcurrNode = currNode[0]
     let mystack = stack
-
+    setIsStepCompleted(false)
     const char = inputString[stepIndex]
 
     if(!char){
@@ -106,6 +106,7 @@ export async function DPDAStep(
             setAcceptanceResult("String Rejected");
         }
         setIsRunningStepWise(false)
+        setIsStepCompleted(true)
         return
     }
 
@@ -115,6 +116,7 @@ export async function DPDAStep(
         setShowQuestion(true);
         setIsRunningStepWise(false);
         setAcceptanceResult(`No transition for '${char}'`);
+        setIsStepCompleted(true)
         return;
     }
     //getTransition
@@ -135,12 +137,14 @@ export async function DPDAStep(
         setShowQuestion(true);
         setIsRunningStepWise(false);
         setAcceptanceResult(`No transition for '${char}' with stack symbol '${mystack[mystack.length - 1]}'`);
+        setIsStepCompleted(true)
         return;
     }
     if (transition.length>1) {
         setShowQuestion(true);
         setIsRunningStepWise(false);
         setAcceptanceResult(`Multiple transitions for'${char}'/'${mystack[mystack.length - 1]}'`);
+        setIsStepCompleted(true)
         return;
     }
     setCurrNode([]);
@@ -182,4 +186,5 @@ export async function DPDAStep(
         }
         setIsRunningStepWise(false);
     }
+    setIsStepCompleted(true)
 }

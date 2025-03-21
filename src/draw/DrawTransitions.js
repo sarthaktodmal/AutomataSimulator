@@ -1,7 +1,7 @@
 import { Arrow, Text, Shape, Group, Rect } from "react-konva";
 import React from 'react'
 
-const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transitionMap,getNodeById}) => { 
+const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transitionMap,getNodeById,theme}) => { 
     //Helper
     const calculateArrowPoints = (sourceX, sourceY, targetX, targetY, radius) => {
         const angle = Math.atan2(targetY - sourceY, targetX - sourceX);
@@ -33,7 +33,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             context.closePath();
             context.strokeShape(shape);
             }}
-            stroke={isEpsilon?"#1877F2":isHighlighted ?"red" : "black"}
+            stroke={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
             strokeWidth={2}
         />
         <Arrow
@@ -43,8 +43,8 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             loopX + loopRadius * Math.cos(arrowAngle + Math.PI / 6),
             loopY + loopRadius * Math.sin(arrowAngle + Math.PI / 6),
             ]}
-            stroke={isEpsilon?"#1877F2":isHighlighted ?"red" : "black"}
-            fill={isEpsilon?"#1877F2":isHighlighted ?"red" : "black"}
+            stroke={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
+            fill={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
             pointerLength={10}
             pointerWidth={10}
         />
@@ -53,7 +53,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             y={loopY - loopRadius - 20}
             width={(loopX + label.length * 3) - (loopX - label.length * 3) + 10}
             height={18}
-            fill={"white"}
+            fill={theme.background}
             opacity={0.8}
         />
         <Text
@@ -61,7 +61,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             y={loopY - loopRadius - 18}
             text={label}
             fontSize={16}
-            fill="black"
+            fill={theme.black}
             align="center"
             verticalAlign="middle"
         />
@@ -159,7 +159,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
                         context.stroke();
                         context.strokeShape(shape);
                     }}
-                    stroke={isEpsilon?"#1877F2":isHighlighted ?"red" : "black"}
+                    stroke={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
                     strokeWidth={2}
                     />
                     <Shape
@@ -177,7 +177,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
                         endY - arrowSize * Math.sin(angleToCenter - Math.PI / 6)
                         );
                         context.closePath();
-                        context.fillStyle = isEpsilon?"#1877F2":isHighlighted ?"red" : "black";
+                        context.fillStyle = isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black;
                         context.fill();
                     }}
                     />
@@ -187,8 +187,8 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
                 return (
                 <Arrow
                     points={[startX, startY, endX, endY]}
-                    stroke={isEpsilon?"#1877F2":isHighlighted ?"red" : "black"}
-                    fill={isEpsilon?"#1877F2":isHighlighted ? "red" : "black"}
+                    stroke={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
+                    fill={isEpsilon?theme.blue:isHighlighted ? theme.red : theme.black}
                     pointerLength={10}
                     pointerWidth={10}
                 />
@@ -202,7 +202,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
                 y={isReverse ? calculateMidpointY(startY, controlY, endY) - 5 : (startY + endY) / 2 - 10}
                 width={edge.label.length * 7 + 10}
                 height={20}
-                fill="white"
+                fill={theme.background}
                 opacity={0.8}
                 blurRadius={2}
             />
@@ -217,7 +217,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
                 }
                 text={edge.label}
                 fontSize={16}
-                fill="black"
+                fill={theme.black}
                 align="center"
                 verticalAlign="middle"
             />

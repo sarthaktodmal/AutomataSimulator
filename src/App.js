@@ -1,13 +1,15 @@
 import React, { useState,useEffect,useRef } from "react";
-import { Stage, Layer, } from "react-konva";
+import { Stage, Layer } from "react-konva";
 import InputPopup from './components/InputPopup';
 import ReactDOM from 'react-dom';
 import DrawTransitions from "./draw/DrawTransitions";
 import DrawNodes from "./draw/DrawNodes";
 import DrawGrid from "./draw/DrawGrid";
 import { DPDA, DPDAStep } from "./logic/DPDA"
+import { NPDA, NPDAStep,computeEpsilonClosure } from "./logic/NPDA"
 import { DFA, DFAStep }from './logic/DFA'
 import { NFA, NFAStep }from './logic/NFA'
+import { lightTheme, darkTheme } from "./theme";
 
 const AutomataSimulator = () => {
   const [nodeMap, setNodeMap] = useState({});
@@ -46,11 +48,25 @@ const AutomataSimulator = () => {
   //DFA OR NFA
   const [automataType,setAutomataType] = useState("DFA");
 
-  //PDA STACK
+  //DPDA STACK
   const [stack, setStack] = useState(['z₀']);
+
+  //NPDA STACK
+  const [stackContents, setStackContents] = useState([{node:'q0',stack:['z₀']}]);
+  const [currentStatesNPDA, setCurrentStatesNPDA] = useState([{}]) // for stepwise NPDA
 
   //Loading
   const fileInputRef = useRef(null);
+
+  //theme
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme === "dark" ? darkTheme : lightTheme;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("theme", theme === darkTheme ? "dark" : "light");
+  }, [theme]);
 
   useEffect(() => {
     const img = new window.Image();
@@ -67,17 +83,33 @@ const AutomataSimulator = () => {
     }, time);
   };  
 
+  const boundingBox = {
+    width: 400,
+    height: 400,
+  };
+  const getCenteredBoundingBoxPosition = () => {
+    return {
+      x: (window.innerWidth - boundingBox.width) / 2,
+      y: (window.innerHeight - boundingBox.height) / 2
+    };
+  };
+  const getRandomPosition = () => {
+    const centeredPosition = getCenteredBoundingBoxPosition();
+    const x = centeredPosition.x + Math.random() * boundingBox.width;
+    const y = centeredPosition.y + Math.random() * boundingBox.height;
+    return { x, y };
+  };
   const handleAddNode = () => {
-    const x = (window.innerWidth / 2 - stageProps.x) / stageProps.scale;
-    const y = (window.innerHeight / 2 - stageProps.y) / stageProps.scale;  
+    const { x, y } = getRandomPosition();
     const newNode = {
       id: `q${nodeNum}`,
-      x: x,
-      y: y,
+      x: (x - stageProps.x) / stageProps.scale,
+      y: (y - stageProps.y) / stageProps.scale,
     };
-    setNodeNum((prev)=>prev+1);
+    setNodeNum((prev) => prev + 1);
     setNodeMap((prev) => ({ ...prev, [newNode.id]: newNode }));
   };
+
   const deleteNode = () => {
     if (selectedNode&&selectedNode.id!=="q0") {
       ReactDOM.unstable_batchedUpdates(() => {
@@ -125,7 +157,7 @@ const AutomataSimulator = () => {
           (t) => t.targetid === targetNode.id
         );
         if (existingTransition) {
-            if(automataType!=="DPDA"){
+            if(automataType!=="DPDA"&&automataType!=="NPDA"){
               const existingSymbols = new Set(existingTransition.label.split(','));
               const newSymbols = symbol.split(',').map((s) => s.trim());
               newSymbols.forEach((s) => existingSymbols.add(s));
@@ -160,15 +192,18 @@ const AutomataSimulator = () => {
 
   const handleNodeClick = (node) => {
     if(isRunning)return
-    setIsStepCompleted(true);
-    setIsRunningStepWise(false);
-    setShowQuestion(false);
-    setAcceptanceResult(null)
-    setCurrEpsilonTrans([])
-    setCurrNode([]);
-    setStepIndex(0);
-    setHighlightedTransition([]);
-    setStack(['z₀'])
+    ReactDOM.unstable_batchedUpdates(()=>{
+      setIsStepCompleted(true);
+      setIsRunningStepWise(false);
+      setShowQuestion(false);
+      setAcceptanceResult(null)
+      setCurrEpsilonTrans([])
+      setCurrNode([]);
+      setStepIndex(0);
+      setHighlightedTransition([]);
+      setStack(['z₀'])
+      setStackContents([{node:'q0',stack:['z₀']}])
+    })
 
     if (!selectedNode) {
       setSelectedNode(node);
@@ -250,7 +285,10 @@ const AutomataSimulator = () => {
       setCurrNode([]);
       setIsStepCompleted(true);
       setHighlightedTransition([]);
+      setCurrEpsilonTrans([])
       setStepIndex(0);
+      setStackContents([{node:'q0',stack:['z₀']}])
+      setStack(['z₀'])
     })
   };
 
@@ -335,15 +373,64 @@ const AutomataSimulator = () => {
         setIsRunningStepWise(true);
         setIsStepCompleted(true)
         setAcceptanceResult(null);
-        setStack(['z₀'])
       })
     } else {
+      if (!isStepCompleted) return;
       DPDAStep(currNode, setCurrNode, inputString, transitionMap,
         stack,setStack,sleep,highlightTransitions,getNodeById,stepIndex,
-        setStepIndex,finalNodes,setAcceptanceResult,setShowQuestion,setIsRunningStepWise
+        setStepIndex,finalNodes,setAcceptanceResult,setShowQuestion,setIsRunningStepWise,
+        setIsStepCompleted
       )
     }
   };
+
+  //NPDA
+  const handleRunNPDA = async () => {
+    if (!nodeMap["q0"]) return;
+    if (isRunning) return;
+    ReactDOM.unstable_batchedUpdates(() => {
+      setIsRunning(true);
+      if (isRunningStepWise) setIsRunningStepWise(false);
+      setShowQuestion(false);
+      setSelectedNode(null);
+      setHighlightedTransition([]);
+      setAcceptanceResult(null);
+      setCurrEpsilonTrans([])
+      setStepIndex(0);
+    })
+    NPDA(nodeMap["q0"], setIsRunning, setCurrNode, inputString,
+      transitionMap, setStackContents, sleep, highlightTransitions, getNodeById,
+      setStepIndex, finalNodes, setAcceptanceResult,setCurrEpsilonTrans,setShowQuestion
+    )
+  };
+  const handleStepNPDA = async () => {
+    if(isRunning)return
+    if (!isRunningStepWise) {
+      // Initialize stepwise run
+      resetStepWise();
+      ReactDOM.unstable_batchedUpdates(() => {
+        setCurrNode([nodeMap["q0"]])
+        setStepIndex(0);
+        setIsRunningStepWise(true);
+        setIsStepCompleted(true)
+        setAcceptanceResult(null);
+        setCurrentStatesNPDA([{ node: nodeMap["q0"], stack: ['z₀'] }])
+
+        //epsclosure of initial
+        let iniclosure = computeEpsilonClosure([{ node: nodeMap["q0"], stack: ['z₀'] }], transitionMap, setCurrEpsilonTrans, getNodeById)
+        setCurrentStatesNPDA(iniclosure);
+        setCurrNode(iniclosure.map(state => state.node));
+        setStackContents(iniclosure.map(state => ({ node: state.node.id, stack: [...state.stack] })));
+      })
+    } else {
+      if (!isStepCompleted) return;
+      NPDAStep(currentStatesNPDA,setCurrentStatesNPDA,inputString,stepIndex,transitionMap,setCurrNode,
+        setStackContents,setStepIndex,setAcceptanceResult,setCurrEpsilonTrans,
+        highlightTransitions,setIsRunningStepWise,getNodeById,finalNodes,sleep,setShowQuestion,setIsStepCompleted
+      )
+    }
+  };
+
 
   const handleWheel = (e) => {
     e.evt.preventDefault();
@@ -441,6 +528,7 @@ const AutomataSimulator = () => {
       case "DFA": return handleRun
       case "NFA": return NFARUN
       case "DPDA": return handleRunDPDA
+      case "NPDA": return handleRunNPDA
       default: console.error("Wrong Automata Type")
     }
   }
@@ -449,48 +537,57 @@ const AutomataSimulator = () => {
       case "DFA": return onStepWiseClick
       case "NFA": return onNFAStepClick
       case "DPDA": return handleStepDPDA
+      case "NPDA": return handleStepNPDA
       default: console.error("Wrong Automata Type")
     }
   }
   return (
     <div style={{ position: "relative" }}>
+      <img
+      onClick={() => setTheme(theme === lightTheme ? darkTheme : lightTheme)}
+      width={20}
+      alt={'theme'}
+      color="red"
+      style={{ cursor:'pointer',position: "absolute", top: 9, right: 130, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 0}}
+      src={theme===lightTheme?require('./assets/sun.png'):require('./assets/moon.png')}
+      />
       <button
         onClick={handleAddNode}
-        style={{ position: "absolute", top: 10, left: 10, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
+        style={{ position: "absolute", top: 10, left: 10, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.blue }}
       >
         Add Node
       </button>
       <button
         onClick={handleImportClick}
-        style={{ position: "absolute", top: 10, right: 80, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
+        style={{ position: "absolute", top: 10, right: 70, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.blue }}
       >
-        Import
+        Load
       </button>
       <button
         onClick={handleExportClick}
-        style={{ position: "absolute", top: 10, right: 10, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
+        style={{ position: "absolute", top: 10, right: 10, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.blue }}
       >
-        Export
+        Save
       </button>
       <input
         inputMode="text"
         placeholder="Enter String"
         value={inputString}
-        maxLength={33}
+        maxLength={26}
         readOnly={isRunning || isRunningStepWise}
         onChange={(e) => setInputString(e.target.value.trim()) }
-        style={{ position: "absolute", bottom: 10, left: 10, zIndex: 10, padding: 15 }}
+        style={{ backgroundColor:theme.background,color:theme.black,position: "absolute", bottom: 10, left: 10, zIndex: 10, padding: 15,borderWidth: 1,borderStyle:'solid',borderRadius: 5 }}
       />
 
       <button
         onClick={run()}
-        style={{ position: "absolute", bottom: 10, left: 310, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#32CD32" }}
+        style={{ position: "absolute", bottom: 10, left: 310, zIndex: 10, padding: 13, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.green }}
       >
         Run
       </button>
       <button
         onClick={step()}
-        style={{ position: "absolute", bottom: 10, left: 380, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "#1877F2" }}
+        style={{ position: "absolute", bottom: 10, left: 380, zIndex: 10, padding: 13, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.blue }}
       >
         Step
       </button>
@@ -498,7 +595,7 @@ const AutomataSimulator = () => {
       {selectedNode && (
         <button
           onClick={handleSetFinal}
-          style={{ position: "absolute", top: 10, left: 120, zIndex: 10, padding: 15, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "black" }}
+          style={{ position: "absolute", top: 10, left: 105, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 1, color: "white", backgroundColor: "black" }}
         >
           Set Final
         </button>
@@ -506,10 +603,10 @@ const AutomataSimulator = () => {
       {selectedNode&&selectedNode.id!=="q0"&&(
         <img
           onClick={deleteNode}
-          width={34}
+          width={29}
           alt="del"
           src={require("./assets/delete.png")}
-          style={{cursor:"pointer",position: "absolute", top: 10, left: 225, zIndex: 10,padding:8, border: 'solid', borderRadius: 10, borderWidth: 1, color: "white", backgroundColor: "red" }}
+          style={{cursor:"pointer",position: "absolute", top: 10, left: 200, zIndex: 10,padding:6, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: "red" }}
         />
       )}
 
@@ -517,29 +614,33 @@ const AutomataSimulator = () => {
         <span style={{ position: "absolute", bottom: 5, right: 60, zIndex: 10, padding: 15, color: "grey" }}>Select a node to add transition</span>
       }
       {acceptanceResult && (
-        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: acceptanceResult.toLowerCase().includes("accepted") ? "#32CD32" : "red", backgroundColor:"white", fontSize: 18, fontWeight: "bold" }}>
+        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: acceptanceResult.toLowerCase().includes("accepted") ? "#32CD32" : "red", backgroundColor:acceptanceResult.toLowerCase().includes("accepted")?theme.greenTrans:theme.redTrans,
+          paddingLeft:10,paddingRight:10,paddingTop:5,paddingBottom:5, borderRadius:5,fontSize: 18, fontWeight: "bold" }}>
           {acceptanceResult}
         </div>
       )}
 
-      <select style={{ position: "absolute", bottom: 12, left: 210, zIndex: 10, height:45,width:80,padding:10, color: "black" }}
+      <select style={{ position: "absolute", bottom: 10, left: 210, zIndex: 10, height:45,width:80,padding:10, color: theme.black,backgroundColor:theme.background,borderStyle:'solid',borderRadius:5 }}
         value={automataType}
         onChange={(e) => {setAutomataType(e.target.value)
           setIsRunning(false)
           setIsRunningStepWise(false);
+          setCurrEpsilonTrans([])
           resetStepWise()
         }}
       >
         <option value="DFA">DFA</option>
         <option value="NFA">NFA</option>
         <option value="DPDA">DPDA</option>
+        <option value="NPDA">NPDA</option>
       </select>
 
       {inputString.split('').map((char,index) => {
           return <span key={index} style={{position:"absolute",
-            bottom:100, left:10+index*40,zIndex:100, 
-            backgroundColor: (index===stepIndex)?"red":"white",
-            color:(index===stepIndex)?"white":"black",
+            bottom:10, left:480+index*40,zIndex:100, 
+            backgroundColor: (index===stepIndex)?theme.red:theme.background,
+            color:(index===stepIndex)?'white':theme.black,
+            borderColor: (index===stepIndex)?theme.red:theme.black,
             userSelect:"none",
             padding:10, borderStyle:"solid", borderRadius:5, borderWidth:1}}>{char}</span>
         })}
@@ -547,19 +648,54 @@ const AutomataSimulator = () => {
       {automataType==="DPDA"&&stack.map((element,index)=>{
         return (
           <span key={`${element}-${index}`} style={{position:"absolute",
-          bottom:100+(index*24), right:(index===stack.length-1)?53:55,zIndex:100,
+          bottom:100+(index*24), right:(index===stack.length-1)?54:55,zIndex:100,
           width:100,
           textAlign:"center",
-          backgroundColor:"white",
-          color:"black",
+          backgroundColor:theme.background,
+          color:theme.black,
           userSelect:"none",
           borderWidth:(index===stack.length-1)?3:1,
           padding:2, borderStyle:"solid", borderRadius:0,}}>{element}</span>
         )
       })}
 
+    {automataType==="NPDA"&&stackContents.map((stack, stackIndex) => (
+        <div key={`stack-${stackIndex}`} style={{ position: 'absolute',
+          bottom: 30,right:(stackIndex*70),zIndex:100,
+         }}>
+          {stack.stack.map((element, index) => (
+            <span
+              key={`${element}-${index}`}
+              style={{
+                position: 'absolute',
+                bottom: 100 + (index * 24),
+                right: (index === stack.stack.length - 1) ? 53.5 : 55,
+                zIndex: 100,
+                width: 50,
+                textAlign: 'center',
+                backgroundColor: theme.background,
+                color: theme.black,
+                userSelect: 'none',
+                borderWidth: (index === stack.stack.length - 1) ? 3 : 1,
+                padding: 2,
+                borderStyle: 'solid',
+                borderRadius: 0,
+              }}
+            >
+              {element}
+            </span>
+          ))}
+          <span key={stackIndex}
+            style={{position:"absolute",
+            color: theme.black,
+            userSelect:"none",
+            bottom:75, right:74,zIndex:100}}>{stack.node}</span>
+        </div>
+      ))}
+
       {automataType==="DPDA"&&
         <span style={{position:"absolute",
+          color: theme.black,
           userSelect:"none",
           bottom:75, right:85,zIndex:100}}>Stack</span>
       }
@@ -567,7 +703,7 @@ const AutomataSimulator = () => {
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
-        style={{ background:"white", cursor: stageProps.draggable && stageDragging? "grabbing": "default"}}
+        style={{ background:theme===lightTheme?'white':'#1f1f1f', cursor: stageProps.draggable && stageDragging? "grabbing": "default"}}
         x={stageProps.x}
         y={stageProps.y}
         draggable={stageProps.draggable && stageDragging}
@@ -593,7 +729,7 @@ const AutomataSimulator = () => {
           {/* Grid Background */}
           <DrawGrid
             size={20}
-            color={"#9c9c9c"}
+            color={theme.grid}
             stageProps={stageProps}
           />
 
@@ -608,6 +744,7 @@ const AutomataSimulator = () => {
                   highlightedTransition={highlightedTransition}
                   transitionMap={transitionMap}
                   getNodeById={(id)=>getNodeById(id)}
+                  theme={theme}
                 />
               )
             })
@@ -628,6 +765,7 @@ const AutomataSimulator = () => {
                 nodeMouseDown={nodeMouseDown}
                 nodeMouseUp={nodeMouseUp}
                 questionImage={image}
+                theme={theme}
               />
             )
           })}
@@ -639,6 +777,7 @@ const AutomataSimulator = () => {
         onClose={handleInputClose}
         onSubmit={handleSymbolInputSubmit}
         automataType={automataType}
+        theme={theme}
       />
       </div>
       <input

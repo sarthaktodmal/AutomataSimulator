@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
-import styles from "./InputPopup.module.css";
 
-const InputPopup = ({ isOpen, onClose, onSubmit,automataType }) => {
+const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
   const [inputValue, setInputValue] = useState('');
   const [pushInput, setPushInput] = useState('');
   const [inputSym, setInputSym] = useState('');
@@ -26,7 +25,7 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType }) => {
       inputRef.current.focus();
       return
     }
-    if(automataType==="DPDA"){
+    if(automataType==="DPDA"||automataType==="NPDA"){
       if(inputSym===''||stackTop===''||pushInput==='') return
       onSubmit(`${inputSym},${stackTop}/${pushInput}`);
     }else{
@@ -78,8 +77,18 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType }) => {
 
   //PDA EXTRA INPUT ε z₀
   function epsilonclick(){
-    pushRef.current.focus()
-    setPushInput('ε')
+    if(automataType==="NPDA"){
+      if(PDAfocused===0){
+        inputsymRef.current.focus()
+        setInputSym('ε')
+      }else if(PDAfocused===2){
+        pushRef.current.focus()
+        setPushInput(`ε`)
+      }
+    }else{
+      pushRef.current.focus()
+      setPushInput('ε')
+    }
   }
   function z0click(){
     if(PDAfocused===1){
@@ -102,71 +111,198 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType }) => {
     return null;
   }
   return (
-    <div className={styles.popupOverlay}>
-      <div className={styles.popupContent}>
-        <h3 className={styles.popupTitle}>Enter Transition Symbol for {automataType}</h3>
-        {automataType==="DPDA"?
-        <>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    }}>
+      <div style={{
+        backgroundColor: theme.grey,
+        paddingTop: '10px',
+        borderRadius: '8px',
+        borderWidth:1,
+        borderColor:theme.grid,
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+        width: '350px',
+        textAlign: 'center',
+      }}>
+        <h3 style={{
+          marginBottom: '15px',
+          fontSize: '1.2em',
+          alignSelf: 'self-start',
+          color: theme.black,
+        }}>
+          Enter Transition Symbol for {automataType}
+        </h3>
+        
+        {(automataType === "DPDA" || automataType === "NPDA") ? (
+          <>
+            <input
+              ref={inputsymRef}
+              value={inputSym}
+              type="text"
+              placeholder='input'
+              spellCheck="false"
+              style={{
+                width: '18%',
+                padding: '10px',
+                marginBottom: '15px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '1em',
+                backgroundColor:theme.background,
+                color:theme.black,
+              }}
+              autoFocus
+              onChange={handleInputsymChange}
+              onFocus={() => { setPDAfocused(0); }}
+            />
+            <span style={{ fontSize: '18px',color:theme.black }}> , </span>
+            <input
+              ref={stacktopRef}
+              type="text"
+              placeholder='stacktop'
+              value={stackTop}
+              spellCheck="false"
+              onChange={handleStackTopChange}
+              style={{
+                width: '18%',
+                padding: '10px',
+                marginBottom: '15px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '1em',
+                backgroundColor:theme.background,
+                color:theme.black,
+              }}
+              onFocus={() => { setPDAfocused(1); }}
+            />
+            <span style={{ fontSize: '18px',color:theme.black }}> / </span>
+            <input
+              ref={pushRef}
+              placeholder='push'
+              type="text"
+              value={pushInput}
+              spellCheck="false"
+              onChange={handlePushChange}
+              style={{
+                color:theme.black,
+                width: '18%',
+                padding: '10px',
+                marginBottom: '15px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '1em',
+                backgroundColor:theme.background
+              }}
+              onFocus={() => { setPDAfocused(2); }}
+            />
+          </>
+        ) : (
           <input
-          ref={inputsymRef}
-          value={inputSym}
-          type="text"
-          placeholder='input'
-          className={styles.popupInputForPDA}
-          autoFocus
-          onChange={handleInputsymChange}
-          onFocus={()=>{setPDAfocused(0)}}
-        />
-        <span style={{fontSize: 18,}}> , </span>
-         <input
-          ref={stacktopRef}
-          type="text"
-          placeholder='stacktop'
-          value={stackTop}
-          onChange={handleStackTopChange}
-          className={styles.popupInputForPDA}
-          onFocus={()=>{setPDAfocused(1)}}
-        />
-          <span style={{fontSize: 18,}}> / </span>
-         <input
-          ref={pushRef}
-          placeholder='push'
-          type="text"
-          value={pushInput}
-          onChange={handlePushChange}
-          className={styles.popupInputForPDA}
-          onFocus={()=>{setPDAfocused(2)}}
-        />
-        </>
-          :
-          <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={(e)=>handleChange(e,setInputValue)}
-          className={styles.popupInput}
-          autoFocus
-        />}
-        <div className={styles.specialInputDiv}>
-          {(automataType==="NFA"||automataType==="DPDA")&&
-            <button onClick={automataType==="DPDA"?epsilonclick:epsilon} className={styles.epsilonButt}>
-            ε epsilon
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            spellCheck="false"
+            onChange={(e) => handleChange(e, setInputValue)}
+            style={{
+              backgroundColor:theme.background,
+              color:theme.black,
+              width: '80%',
+              padding: '10px',
+              marginBottom: '15px',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              fontSize: '1em',
+            }}
+            autoFocus
+          />
+        )}
+
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'space-evenly',
+          marginBottom: '15px'
+        }}>
+          {(automataType === "NFA" || automataType === "DPDA" || automataType === "NPDA") && (
+            <button 
+              style={{
+                width: '30%',
+                border: '1px solid rgb(154, 154, 154)',
+                padding: '5px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition:'opacity .3s ease',
+                color:theme.black,
+                backgroundColor:theme.background
+              }}
+              onClick={automataType === "DPDA"||automataType === "NPDA" ? epsilonclick : epsilon}
+            >
+              ε epsilon
             </button>
-          }
-          {automataType==="DPDA"&&
-            <button onClick={z0click} className={styles.epsilonButt}>
-            z₀
+          )}
+          {(automataType === "DPDA" || automataType === "NPDA")&& (
+            <button 
+              style={{
+                width: '30%',
+                border: '1px solid rgb(154, 154, 154)',
+                padding: '5px',
+                borderRadius:'4px', 
+                cursor:'pointer', 
+                transition:'opacity .3s ease',
+                color:theme.black,
+                backgroundColor:theme.background
+              }}
+              onClick={z0click}
+            >
+              z₀
             </button>
-          }
+          )}
         </div>
 
-        <div className={styles.popupButtons}>
-          <button onClick={handleSubmit} className={styles.popupButton}>
+        <div style={{
+          display:'flex', 
+          justifyContent:'space-around', 
+          gap:'10px'
+        }}>
+          <button 
+            onClick={handleSubmit} 
+            style={{
+              padding:'15px', 
+              border:'none', 
+              fontSize:'16px', 
+              cursor:'pointer', 
+              backgroundColor:'#1877F2', 
+              color:'white', 
+              width:'50%', 
+              borderBottomLeftRadius:'8px'
+            }}
+          >
             Submit
           </button>
-          <button onClick={handleClose} className={styles.popupButton}>
-            Cancel
-          </button>
+          <button 
+            onClick={handleClose} 
+            style={{
+               padding:'15px', 
+               border:'none', 
+               fontSize:'16px', 
+               cursor:'pointer', 
+               backgroundColor:theme.background, 
+               color:theme.black, 
+               width:'50%', 
+               borderBottomRightRadius:'8px'
+             }}
+           >
+             Cancel
+           </button>
         </div>
       </div>
     </div>

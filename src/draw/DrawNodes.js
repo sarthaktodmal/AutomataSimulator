@@ -1,7 +1,7 @@
 import {  Circle, Arrow, Text, Group, Image} from "react-konva";
 import React from 'react'
 
-const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNodeClick,handleDragMove,nodeMouseDown,nodeMouseUp,questionImage}) => {
+const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNodeClick,handleDragMove,nodeMouseDown,nodeMouseUp,questionImage, theme}) => {
     const isCurrent = Array.isArray(currNode) && currNode.some((n) => n.id === node.id);
     return (
         <Group
@@ -22,8 +22,8 @@ const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNod
         {node.id === 'q0' && (
             <Arrow
             points={[-70, 0, -32, 0]}
-            stroke={currNode && currNode.id === node.id?"red":"black"}
-            fill={currNode && currNode.id === node.id?"red":"black"}
+            stroke={currNode && currNode.id === node.id?theme.red:theme.black}
+            fill={currNode && currNode.id === node.id?theme.red:theme.black}
             pointerLength={10}
             pointerWidth={10}
             />
@@ -33,8 +33,8 @@ const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNod
             x={0}
             y={0}
             radius={30}
-            fill={selectedNode ? (selectedNode.id === node.id ? "rgba(207, 207, 255,1.0)" : "white") : (isCurrent ? currNode.some((n) => n.id===node.id&&finalNodes.has(node.id)) ? "#32CD32" : "red" : "white")}
-            stroke={selectedNode ? (selectedNode.id === node.id ? "rgba(89, 89, 255,1.0)" : "black") : "black"}
+            fill={selectedNode ? (selectedNode.id === node.id ? theme.selected : theme.background) : (isCurrent ? currNode.some((n) => n.id===node.id&&finalNodes.has(node.id)) ? theme.green : theme.red : theme.background)}
+            stroke={selectedNode ? (selectedNode.id === node.id ? theme.selected2 : theme.black) : theme.black}
             strokeWidth={selectedNode ? (selectedNode.id === node.id ? 2 : 1) : 1}
             //shadowBlur={10}
             //shadowColor={selectedNode ? (selectedNode.id === node.id ? "rgba(89, 89, 255,1.0)" : "black") : (isCurrent ? currNode.some((n) => n.id===node.id&&finalNodes.has(node.id)) ? "#32CD32" : "red" : "black")}
@@ -45,7 +45,7 @@ const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNod
             x={0}
             y={0}
             radius={25}
-            stroke="black"
+            stroke={theme.black}
             strokeWidth={1}
             fill="transparent"
             />
@@ -54,7 +54,7 @@ const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNod
             x={0 - node.id.length*5 + 10}             
             y={-7}
             text={node.id}
-            fill={isCurrent ? "white" : "black"}
+            fill={isCurrent ? 'white' : theme.black}
             fontSize={16}
             align="center"
             verticalAlign="middle"
