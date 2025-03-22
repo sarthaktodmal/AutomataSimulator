@@ -1,7 +1,8 @@
 import { Arrow, Text, Shape, Group, Rect } from "react-konva";
-import React from 'react'
+import React, { useState } from 'react'
+import crossIcon from '../assets/cross5.png'
 
-const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transitionMap,getNodeById,theme}) => { 
+const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transitionMap,setTransitionMap,getNodeById,theme}) => { 
     //Helper
     const calculateArrowPoints = (sourceX, sourceY, targetX, targetY, radius) => {
         const angle = Math.atan2(targetY - sourceY, targetX - sourceX);
@@ -33,7 +34,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             context.closePath();
             context.strokeShape(shape);
             }}
-            stroke={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
+            stroke={ishovering?theme.lightgrey :isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
             strokeWidth={2}
         />
         <Arrow
@@ -43,12 +44,14 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             loopX + loopRadius * Math.cos(arrowAngle + Math.PI / 6),
             loopY + loopRadius * Math.sin(arrowAngle + Math.PI / 6),
             ]}
-            stroke={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
-            fill={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
+            stroke={ishovering?theme.lightgrey:isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
+            fill={ishovering?theme.lightgrey:isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
             pointerLength={10}
             pointerWidth={10}
         />
         <Rect
+            
+            
             x={loopX - label.length * 3 - 6}
             y={loopY - loopRadius - 20}
             width={(loopX + label.length * 3) - (loopX - label.length * 3) + 10}
@@ -57,6 +60,9 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             opacity={0.8}
         />
         <Text
+        onMouseEnter={handlemouseEnter}
+        onMouseLeave={handlemouseLeave}
+        onClick={lineCLick}
             x={loopX - label.length * 3 - 3}
             y={loopY - loopRadius - 18}
             text={label}
@@ -109,7 +115,32 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
         const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
         return Math.max(6, distance / 60);
     };
-      
+    
+    const [ishovering,setIsHovering] = useState(false)
+    //highlight when hovered
+    const handlemouseEnter=(e)=>{
+        const container = e.target.getStage().container()
+        container.style.cursor = `url(${crossIcon}) 10 10, auto`;
+        setIsHovering(true)
+    }
+    const handlemouseLeave=(e)=>{
+        const container = e.target.getStage().container()
+        container.style.cursor = "default"
+        setIsHovering(false)
+    }
+    const lineCLick=()=>{
+        setTransitionMap((prev) => {
+            const updatedTransitionMap = Object.fromEntries(
+                Object.entries(prev).map(([key, transitions_]) => [key,
+                  transitions_.filter((transition_) =>
+                      transition_!=transition
+                  ),
+                ])
+            );
+            return updatedTransitionMap
+        });
+    }
+
     //------------Main--------------
 
     const edge = { source: getNodeById(transition.sourceid), target: getNodeById(transition.targetid), label: transition.label };
@@ -159,7 +190,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
                         context.stroke();
                         context.strokeShape(shape);
                     }}
-                    stroke={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
+                    stroke={ishovering?theme.lightgrey:isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
                     strokeWidth={2}
                     />
                     <Shape
@@ -177,7 +208,7 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
                         endY - arrowSize * Math.sin(angleToCenter - Math.PI / 6)
                         );
                         context.closePath();
-                        context.fillStyle = isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black;
+                        context.fillStyle = ishovering?theme.lightgrey:isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black;
                         context.fill();
                     }}
                     />
@@ -187,8 +218,8 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
                 return (
                 <Arrow
                     points={[startX, startY, endX, endY]}
-                    stroke={isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
-                    fill={isEpsilon?theme.blue:isHighlighted ? theme.red : theme.black}
+                    stroke={ishovering?theme.lightgrey:isEpsilon?theme.blue:isHighlighted ?theme.red : theme.black}
+                    fill={ishovering?theme.lightgrey:isEpsilon?theme.blue:isHighlighted ? theme.red : theme.black}
                     pointerLength={10}
                     pointerWidth={10}
                 />
@@ -196,7 +227,11 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             }
             })()}
             {/* Label Text*/}
-            <Group>
+            <Group
+            onMouseEnter={handlemouseEnter}
+            onMouseLeave={handlemouseLeave}
+            onClick={lineCLick}
+            >
             <Rect
                 x={isReverse ? calculateMidpointX(startX, controlX, endX) - (edge.label.length * 3.2) - 3: (startX + endX - (edge.label.length *6.5)) / 2 - 4}
                 y={isReverse ? calculateMidpointY(startY, controlY, endY) - 5 : (startY + endY) / 2 - 10}

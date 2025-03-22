@@ -161,7 +161,7 @@ const AutomataSimulator = () => {
               const existingSymbols = new Set(existingTransition.label.split(','));
               const newSymbols = symbol.split(',').map((s) => s.trim());
               newSymbols.forEach((s) => existingSymbols.add(s));
-              existingTransition.label = Array.from(existingSymbols).join(',');  
+              existingTransition.label = Array.from(existingSymbols).join(',');
             }else{
               const existingSymbols = new Set(existingTransition.label.split(' | '));
               const newSymbols = symbol.split(' | ').map((s) => s.trim());
@@ -431,7 +431,6 @@ const AutomataSimulator = () => {
     }
   };
 
-
   const handleWheel = (e) => {
     e.evt.preventDefault();
     const scaleBy = 1.1;
@@ -622,6 +621,7 @@ const AutomataSimulator = () => {
 
       <select style={{ position: "absolute", bottom: 10, left: 210, zIndex: 10, height:45,width:80,padding:10, color: theme.black,backgroundColor:theme.background,borderStyle:'solid',borderRadius:5 }}
         value={automataType}
+        name="automataType"
         onChange={(e) => {setAutomataType(e.target.value)
           setIsRunning(false)
           setIsRunningStepWise(false);
@@ -743,6 +743,7 @@ const AutomataSimulator = () => {
                   key={transition.targetid+key+transition.label}
                   highlightedTransition={highlightedTransition}
                   transitionMap={transitionMap}
+                  setTransitionMap={setTransitionMap}
                   getNodeById={(id)=>getNodeById(id)}
                   theme={theme}
                 />
