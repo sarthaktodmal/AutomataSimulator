@@ -2,21 +2,28 @@ import React, { useState, useRef } from 'react';
 
 const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
   const [inputValue, setInputValue] = useState('');
+
+  //PDA
   const [pushInput, setPushInput] = useState('');
   const [inputSym, setInputSym] = useState('');
   const [stackTop, setStackTop] = useState('');
   const [PDAfocused, setPDAfocused] = useState(0);
-
   const inputRef = useRef(null);
   const inputsymRef = useRef(null);
   const stacktopRef = useRef(null);
   const pushRef = useRef(null);
+
+  //MEaly
+  const [inputMealy, setInputMealy] = useState('');
+  const [outputMealy, setOutputMealy] = useState('');
 
   const handleClose = () => {
     setInputValue('')
     setPushInput('')
     setInputSym('')
     setStackTop('')
+    setInputMealy('')
+    setOutputMealy('')
     onClose();
   };
 
@@ -28,6 +35,9 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
     if(automataType==="DPDA"||automataType==="NPDA"){
       if(inputSym===''||stackTop===''||pushInput==='') return
       onSubmit(`${inputSym},${stackTop}/${pushInput}`);
+    }else if(automataType==="MEALY"){
+      if(inputMealy===''||outputMealy==='') return
+      onSubmit(`${inputMealy}/${outputMealy}`)
     }else{
       onSubmit(inputValue);
     }
@@ -35,6 +45,8 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
     setPushInput('')
     setInputSym('')
     setStackTop('')
+    setInputMealy('')
+    setOutputMealy('')
     onClose();
   };
 
@@ -99,7 +111,6 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
       handlePushChange(`${pushInput}z₀`)
     }
   }
-
   function CustomCommadInput(setTarget,target,input){
     if (target!=='') {
       setTarget((prev) => `${prev},${input}`)
@@ -142,7 +153,7 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
           Enter Transition Symbol for {automataType}
         </h3>
         
-        {(automataType === "DPDA" || automataType === "NPDA") ? (
+        {(automataType === "DPDA" || automataType === "NPDA") && (
           <>
             <input
               ref={inputsymRef}
@@ -150,6 +161,7 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
               type="text"
               placeholder='input'
               spellCheck="false"
+              name='inputsym'
               style={{
                 width: '18%',
                 padding: '10px',
@@ -171,6 +183,7 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
               placeholder='stacktop'
               value={stackTop}
               spellCheck="false"
+              name='stacktop'
               onChange={handleStackTopChange}
               style={{
                 width: '18%',
@@ -191,6 +204,7 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
               type="text"
               value={pushInput}
               spellCheck="false"
+              name='push'
               onChange={handlePushChange}
               style={{
                 color:theme.black,
@@ -205,26 +219,75 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
               onFocus={() => { setPDAfocused(2); }}
             />
           </>
-        ) : (
+        )}
+
+        {(automataType==="DFA"||automataType==="NFA")&&
           <input
-            ref={inputRef}
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          spellCheck="false"
+          name='input'
+          onChange={(e) => handleChange(e, setInputValue)}
+          style={{
+            backgroundColor:theme.background,
+            color:theme.black,
+            width: '80%',
+            padding: '10px',
+            marginBottom: '15px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            fontSize: '1em',
+          }}
+          autoFocus
+        />
+        }
+
+        {(automataType==="MEALY")&&
+        <>
+          <input
+          type="text"
+          value={inputMealy}
+          spellCheck="false"
+          name='inputmealy'
+          placeholder='input'
+          maxLength={1}
+          onChange={(e)=>setInputMealy(e.target.value)}
+          style={{
+            backgroundColor:theme.background,
+            color:theme.black,
+            width: '30%',
+            padding: '10px',
+            marginBottom: '15px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            fontSize: '1em',
+          }}
+          autoFocus
+        />
+        <span style={{ fontSize: '18px',color:theme.black }}> / </span>
+          <input
             type="text"
-            value={inputValue}
+            value={outputMealy}
             spellCheck="false"
-            onChange={(e) => handleChange(e, setInputValue)}
+            name='outputmealy'
+            placeholder='output'
+            maxLength={1}
+            onChange={(e)=>setOutputMealy(e.target.value)}
             style={{
               backgroundColor:theme.background,
               color:theme.black,
-              width: '80%',
+              width: '30%',
               padding: '10px',
               marginBottom: '15px',
               border: '1px solid #ccc',
               borderRadius: '4px',
               fontSize: '1em',
             }}
-            autoFocus
           />
-        )}
+        </>
+
+        }
 
         <div style={{
           display: 'flex',

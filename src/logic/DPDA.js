@@ -72,11 +72,11 @@ export async function DPDA(
     }
 
     if (mcurrNode && finalNodes.has(mcurrNode.id) && mystack.length === 1 && mystack[0] === 'z₀') {
-        setAcceptanceResult("String accepted by Final State & Empty Stack");
+        setAcceptanceResult("✔ String accepted by Final State & Empty Stack");
     } else if(mcurrNode && finalNodes.has(mcurrNode.id)) {
-        setAcceptanceResult("String accepted by Final State");
+        setAcceptanceResult("✔ String accepted by Final State");
     }else if(mcurrNode && mystack.length === 1 && mystack[0] === 'z₀'){
-        setAcceptanceResult("String accepted by Empty Stack");
+        setAcceptanceResult("✔ String accepted by Empty Stack");
     }else{
         setAcceptanceResult("String Rejected");
     }
@@ -97,11 +97,11 @@ export async function DPDAStep(
 
     if(!char){
         if (mcurrNode && finalNodes.has(mcurrNode.id) && mystack.length === 1 && mystack[0] === 'z₀') {
-            setAcceptanceResult("String accepted by Final State & Empty Stack");
+            setAcceptanceResult("✔ String accepted by Final State & Empty Stack");
         } else if(mcurrNode && finalNodes.has(mcurrNode.id)) {
-            setAcceptanceResult("String accepted by Final State");
+            setAcceptanceResult("✔ String accepted by Final State");
         }else if(mcurrNode && mystack.length === 1 && mystack[0] === 'z₀'){
-            setAcceptanceResult("String accepted by Empty Stack");
+            setAcceptanceResult("✔ String accepted by Empty Stack");
         }else{
             setAcceptanceResult("String Rejected");
         }
@@ -176,11 +176,11 @@ export async function DPDAStep(
 
     if (stepIndex===inputString.length-1) {
         if (mcurrNode && finalNodes.has(mcurrNode.id) && mystack.length === 1 && mystack[0] === 'z₀') {
-            setAcceptanceResult("String accepted by Final State & Empty Stack");
+            setAcceptanceResult("✔ String accepted by Final State & Empty Stack");
         } else if(mcurrNode && finalNodes.has(mcurrNode.id)) {
-            setAcceptanceResult("String accepted by Final State");
+            setAcceptanceResult("✔ String accepted by Final State");
         }else if(mcurrNode && mystack.length === 1 && mystack[0] === 'z₀'){
-            setAcceptanceResult("String accepted by Empty Stack");
+            setAcceptanceResult("✔ String accepted by Empty Stack");
         }else{
             setAcceptanceResult("String Rejected");
         }

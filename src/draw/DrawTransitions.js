@@ -50,8 +50,6 @@ const DrawTransitions = ({transition,highlightedTransition,epsilonTrans,transiti
             pointerWidth={10}
         />
         <Rect
-            
-            
             x={loopX - label.length * 3 - 6}
             y={loopY - loopRadius - 20}
             width={(loopX + label.length * 3) - (loopX - label.length * 3) + 10}

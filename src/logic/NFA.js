@@ -1,7 +1,5 @@
 import ReactDOM from 'react-dom';
 
-
-
 export async function NFA(initialNodes,setStepIndex,sleep,inputString,
     setIsRunning,finalNodes,setAcceptanceResult,transitionMap,getNodeById,setShowQuestion,
     setCurrNode,highlightTransitions,setCurrEpsilonTrans,epsilonClosure
@@ -16,7 +14,7 @@ export async function NFA(initialNodes,setStepIndex,sleep,inputString,
         if (charIndex === inputString.length) {
           setIsRunning(false);
           if (currentNodes.some(node => finalNodes.has(node.id))) {
-            setAcceptanceResult("String Accepted");
+            setAcceptanceResult("✔ String Accepted");
           } else {
             setAcceptanceResult("String Rejected");
           }
@@ -74,7 +72,7 @@ export async function NFAStep(
 
     if(!char){
       const isAccepted = currentNodes.some(node => finalNodes.has(node.id));
-      setAcceptanceResult(isAccepted ? "String Accepted" : "String Rejected");
+      setAcceptanceResult(isAccepted ? "✔ String Accepted" : "String Rejected");
       setIsRunningStepWise(false);
       return;
     }
@@ -112,7 +110,7 @@ export async function NFAStep(
     }
     if (stepIndex===inputString.length-1) {
       const isAccepted = nextNodes.some(node => finalNodes.has(node.id));
-      setAcceptanceResult(isAccepted ? "String Accepted" : "String Rejected");
+      setAcceptanceResult(isAccepted ? "✔ String Accepted" : "String Rejected");
       setIsRunningStepWise(false);
       return;
     }

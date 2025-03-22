@@ -40,7 +40,7 @@ export async function DFA(
       }
       
       if (mcurrNode && finalNodes.has(mcurrNode.id)) {
-        setAcceptanceResult("String Accepted");
+        setAcceptanceResult("✔ String Accepted");
       } else {
         setAcceptanceResult("String Rejected");
       }
@@ -89,7 +89,7 @@ inputString,stepIndex,setStepIndex,currNode,setCurrNode,transitionMap
     if (stepIndex >= inputString.length - 1) {
       setIsRunningStepWise(false);
       if (mcurrNode && finalNodes.has(mcurrNode.id)) {
-        setAcceptanceResult("String is Accepted");
+        setAcceptanceResult("✔ String is Accepted");
       } else {
         setAcceptanceResult("String is Rejected");
       }

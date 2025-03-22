@@ -9,6 +9,7 @@ import { DPDA, DPDAStep } from "./logic/DPDA"
 import { NPDA, NPDAStep,computeEpsilonClosure } from "./logic/NPDA"
 import { DFA, DFAStep }from './logic/DFA'
 import { NFA, NFAStep }from './logic/NFA'
+import { Mealy, MealyStep }from './logic/Mealy'
 import { lightTheme, darkTheme } from "./theme";
 
 const AutomataSimulator = () => {
@@ -431,6 +432,43 @@ const AutomataSimulator = () => {
     }
   };
 
+  //Mealy
+  const handleRunMEALY = async () => {
+    if (!nodeMap["q0"]) return;
+    if (isRunning) return;
+    ReactDOM.unstable_batchedUpdates(()=>{
+      setIsRunning(true);
+      if (isRunningStepWise) setIsRunningStepWise(false);
+      setShowQuestion(false);
+      setSelectedNode(null);
+      setHighlightedTransition([]);
+      setAcceptanceResult(null);
+      setStepIndex(0);
+    })
+    Mealy(inputString, transitionMap, nodeMap, setShowQuestion, setIsRunning, 
+      setAcceptanceResult, sleep, highlightTransitions, setCurrNode, 
+      setStepIndex, getNodeById)
+    }
+  //Prepare Stepwise DFA
+  const handleRunStepMEALY = async() => {
+    if(isRunning) return;
+    if(!nodeMap["q0"]) return;
+    if(isRunningStepWise){
+      if (selectedNode) setSelectedNode(null);
+      if (!isStepCompleted) return;
+      MealyStep(
+        currNode, setCurrNode, inputString, acceptanceResult,
+        transitionMap, stepIndex,setStepIndex,getNodeById,highlightTransitions,
+        setAcceptanceResult, setShowQuestion,setIsRunningStepWise,
+        setIsStepCompleted,sleep)
+    }else{
+      resetStepWise();
+      setCurrNode([nodeMap["q0"]]);
+      setIsRunningStepWise(true);
+    }
+  }
+
+
   const handleWheel = (e) => {
     e.evt.preventDefault();
     const scaleBy = 1.1;
@@ -450,7 +488,6 @@ const AutomataSimulator = () => {
       draggable: prev.draggable
     }));
   };
-
   const handleDragMoveScreen = (e) => {
     setStageProps((prev) => ({
       ...prev,
@@ -528,6 +565,7 @@ const AutomataSimulator = () => {
       case "NFA": return NFARUN
       case "DPDA": return handleRunDPDA
       case "NPDA": return handleRunNPDA
+      case "MEALY": return handleRunMEALY
       default: console.error("Wrong Automata Type")
     }
   }
@@ -537,6 +575,7 @@ const AutomataSimulator = () => {
       case "NFA": return onNFAStepClick
       case "DPDA": return handleStepDPDA
       case "NPDA": return handleStepNPDA
+      case "MEALY": return handleRunStepMEALY
       default: console.error("Wrong Automata Type")
     }
   }
@@ -613,7 +652,7 @@ const AutomataSimulator = () => {
         <span style={{ position: "absolute", bottom: 5, right: 60, zIndex: 10, padding: 15, color: "grey" }}>Select a node to add transition</span>
       }
       {acceptanceResult && (
-        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: acceptanceResult.toLowerCase().includes("accepted") ? "#32CD32" : "red", backgroundColor:acceptanceResult.toLowerCase().includes("accepted")?theme.greenTrans:theme.redTrans,
+        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: acceptanceResult.toLowerCase().includes("✔") ? "#32CD32" : "red", backgroundColor:acceptanceResult.toLowerCase().includes("✔")?theme.greenTrans:theme.redTrans,
           paddingLeft:10,paddingRight:10,paddingTop:5,paddingBottom:5, borderRadius:5,fontSize: 18, fontWeight: "bold" }}>
           {acceptanceResult}
         </div>
@@ -633,6 +672,7 @@ const AutomataSimulator = () => {
         <option value="NFA">NFA</option>
         <option value="DPDA">DPDA</option>
         <option value="NPDA">NPDA</option>
+        <option value="MEALY">MEALY</option>
       </select>
 
       {inputString.split('').map((char,index) => {

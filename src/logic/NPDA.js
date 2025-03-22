@@ -1,10 +1,10 @@
 export function computeEpsilonClosure(states,transitionMap,setCurrEpsilonTrans,getNodeById) {
     const closure = [...states]; // Start with the current states
     let added = true;
+    let epsclose = []
     while (added) {
         added = false;
         const newStates = [];
-        let epsclose = []
         for (const state of closure) {
             const { node: mcurrNode, stack: mystack } = state;
             const transitions = transitionMap[mcurrNode.id];
@@ -127,15 +127,15 @@ export async function NPDA(
             return;
         }
         // Update visualization and states.
-        currentStates = nextStates;
         await sleep(500); // Simulate delay for visualization
         setCurrNode([]);
         setCurrEpsilonTrans([])
         highlightTransitions(highlightedTransitions);
         await sleep(500); // Simulate delay for visualization
+        nextStates = computeEpsilonClosure(nextStates,transitionMap,setCurrEpsilonTrans,getNodeById);
+        currentStates = nextStates;
         setCurrNode(currentStates.map(state => state.node));
         setStackContents(currentStates.map(state => ({ node: state.node.id, stack: [...state.stack] })));
-        nextStates = computeEpsilonClosure(nextStates,transitionMap,setCurrEpsilonTrans,getNodeById);
     }
 
     // Final epsilon closure after processing all input.
@@ -160,11 +160,11 @@ export async function NPDA(
     }
 
     if (acceptedByFinalStateAndEmptyStack) {
-        setAcceptanceResult("String accepted by Final State & Empty Stack");
+        setAcceptanceResult("✔ String accepted by Final State & Empty Stack");
     } else if (acceptedByFinalState) {
-        setAcceptanceResult("String accepted by Final State");
+        setAcceptanceResult("✔ String accepted by Final State");
     } else if (acceptedByEmptyStack) {
-        setAcceptanceResult("String accepted by Empty Stack");
+        setAcceptanceResult("✔ String accepted by Empty Stack");
     } else {
         setAcceptanceResult("String Rejected");
     }
@@ -194,7 +194,6 @@ export async function NPDAStep(
 ) {
     let currentStates = currentStatesNPDA
     setIsStepCompleted(false)
-    setCurrEpsilonTrans([])
     // Get the next character to process.
     const char = inputString[stepIndex];
     let nextStates = [];
@@ -224,11 +223,11 @@ export async function NPDAStep(
         }
 
         if (acceptedByFinalStateAndEmptyStack) {
-            setAcceptanceResult("String accepted by Final State & Empty Stack");
+            setAcceptanceResult("✔ String accepted by Final State & Empty Stack");
         } else if (acceptedByFinalState) {
-            setAcceptanceResult("String accepted by Final State");
+            setAcceptanceResult("✔ String accepted by Final State");
         } else if (acceptedByEmptyStack) {
-            setAcceptanceResult("String accepted by Empty Stack");
+            setAcceptanceResult("✔ String accepted by Empty Stack");
         } else {
             setAcceptanceResult("String Rejected");
         }
@@ -275,7 +274,6 @@ export async function NPDAStep(
         }
     }
 
-
     if (nextStates.length === 0) {
         setAcceptanceResult("String Rejected: No transition found for '" + char + "' from any current states");
         setShowQuestion(true)
@@ -284,12 +282,12 @@ export async function NPDAStep(
         setIsStepCompleted(true)
         return;
     }
-
+    setCurrEpsilonTrans([])
     currentStates = nextStates;
-    currentStates = computeEpsilonClosure(currentStates,transitionMap,setCurrEpsilonTrans,getNodeById);
     highlightTransitions(highlightedTransitions)
     setCurrNode([])
     await sleep(500);
+    currentStates = computeEpsilonClosure(currentStates,transitionMap,setCurrEpsilonTrans,getNodeById);
     setStepIndex(stepIndex + 1);
     setCurrNode(currentStates.map(state => state.node));
     setStackContents(currentStates.map(state => ({ node: state.node.id, stack: [...state.stack] })));
@@ -320,11 +318,11 @@ export async function NPDAStep(
         }
 
         if (acceptedByFinalStateAndEmptyStack) {
-            setAcceptanceResult("String accepted by Final State & Empty Stack");
+            setAcceptanceResult("✔ String accepted by Final State & Empty Stack");
         } else if (acceptedByFinalState) {
-            setAcceptanceResult("String accepted by Final State");
+            setAcceptanceResult("✔ String accepted by Final State");
         } else if (acceptedByEmptyStack) {
-            setAcceptanceResult("String accepted by Empty Stack");
+            setAcceptanceResult("✔ String accepted by Empty Stack");
         } else {
             setAcceptanceResult("String Rejected");
         }
