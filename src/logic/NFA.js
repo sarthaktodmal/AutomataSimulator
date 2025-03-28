@@ -7,7 +7,7 @@ export async function NFA(initialNodes,setStepIndex,sleep,inputString,
     setStepIndex(0);
     const stack = [{ nodes: initialNodes, charIndex: 0 }];
     while (stack.length > 0) {
-        await sleep(100);
+        //await sleep(100);
         const { nodes, charIndex } = stack.pop();
         const currentNodes = epsilonClosure(nodes);
 

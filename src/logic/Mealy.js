@@ -11,7 +11,7 @@ export async function Mealy(
     setAcceptanceResult(`✔ Output: `)
 
     for (const char of inputString) {
-        await sleep(100);
+        //await sleep(100);
         const transitions = transitionMap[currentState.id];
         let outputchar = ''
         let transition = transitions ? transitions.filter(t => {
