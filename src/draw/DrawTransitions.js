@@ -374,8 +374,3 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
 })
 
 export default DrawTransitions
-
-
-/**
-i am making an automata simulator and this is a file for highlighting transition when the transition is happening. and instead of coloring the current transition (isHighlighted) static red. i want a moving progress effect that makes it feel like red color from state 1 is progressitvely filling the arrow(1 side to other) towards the state 2. and then plane black after its over
- */
