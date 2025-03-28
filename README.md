@@ -6,7 +6,7 @@ Automata Simulator is an interactive tool for designing and testing FA. Users ca
 
 ## Features
 
-- Supports DFA, NFA, PDA & Mealy M
+- Supports DFA, NFA, PDA, Turing & Mealy M
 - Create and position states (nodes) dynamically.
 - Define transitions by clicking on states and specifying symbols.
 - Set states as final states.
@@ -16,7 +16,7 @@ Automata Simulator is an interactive tool for designing and testing FA. Users ca
 
 ## Future Enhancements
 
-- Support for Turing M & Moore M.
+- Support for Moore M.
 - Transition Table
 - Improved UI and additional customization options.
 - Organized Code

@@ -45,7 +45,7 @@ export async function NFA(initialNodes,setStepIndex,sleep,inputString,
             setAcceptanceResult(`String Rejected: No transition for '${char}' from any current state`);
             return;
         }
-        await sleep(500);
+        await sleep(400);
         setCurrNode([]);
         highlightTransitions(transitionsToHighlight);
         setCurrEpsilonTrans([]);
@@ -96,17 +96,13 @@ export async function NFAStep(
       setAcceptanceResult(`String Rejected: No transition for '${char}' from any current state`);
       return;
     }else{
-      ReactDOM.unstable_batchedUpdates(() => {
       highlightTransitions(transitionsToHighlight)
       setCurrEpsilonTrans([])
       setCurrNode([])
-      })
       await sleep(500);
-      ReactDOM.unstable_batchedUpdates(() => {
-        nextNodes = epsilonClosure(nextNodes)
-        setCurrNode(nextNodes);
-        setStepIndex(stepIndex + 1);
-      })
+      nextNodes = epsilonClosure(nextNodes)
+      setCurrNode(nextNodes);
+      setStepIndex(stepIndex + 1);
     }
     if (stepIndex===inputString.length-1) {
       const isAccepted = nextNodes.some(node => finalNodes.has(node.id));

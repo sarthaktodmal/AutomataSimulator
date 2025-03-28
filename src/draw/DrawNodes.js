@@ -1,7 +1,7 @@
 import {  Circle, Arrow, Text, Group, Image} from "react-konva";
 import React from 'react'
 
-const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNodeClick,handleDragMove,nodeMouseDown,nodeMouseUp,questionImage, theme}) => {
+const DrawNodes =  React.memo(({node,currNode,selectedNode,finalNodes,showQuestion,handleNodeClick,handleDragMove,nodeMouseDown,nodeMouseUp,questionImage, theme}) => {
     const isCurrent = Array.isArray(currNode) && currNode.some((n) => n.id === node.id);
     return (
         <Group
@@ -37,7 +37,7 @@ const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNod
             stroke={selectedNode ? (selectedNode.id === node.id ? theme.selected2 : theme.black) : theme.black}
             strokeWidth={selectedNode ? (selectedNode.id === node.id ? 2 : 1) : 1}
             //shadowBlur={10}
-            //shadowColor={selectedNode ? (selectedNode.id === node.id ? "rgba(89, 89, 255,1.0)" : "black") : (isCurrent ? currNode.some((n) => n.id===node.id&&finalNodes.has(node.id)) ? "#32CD32" : "red" : "black")}
+            //shadowColor={selectedNode ? (selectedNode.id === node.id ? "rgba(89, 89, 255,1.0)" : "white") : (isCurrent ? currNode.some((n) => n.id===node.id&&finalNodes.has(node.id)) ? "#32CD32" : "red" : "white")}
         />
         {/* Draw one black ring if the node is final */}
         {finalNodes.has(node.id) && (
@@ -62,5 +62,5 @@ const DrawNodes = ({node,currNode,selectedNode,finalNodes,showQuestion,handleNod
         />
         </Group>
     );
-}
+})
 export default DrawNodes;

@@ -10,6 +10,7 @@ import { NPDA, NPDAStep,computeEpsilonClosure } from "./logic/NPDA"
 import { DFA, DFAStep }from './logic/DFA'
 import { NFA, NFAStep }from './logic/NFA'
 import { Mealy, MealyStep }from './logic/Mealy'
+import { TM,TMStep }from './logic/TM'
 import { lightTheme, darkTheme } from "./theme";
 
 const AutomataSimulator = () => {
@@ -56,6 +57,9 @@ const AutomataSimulator = () => {
   const [stackContents, setStackContents] = useState([{node:'q0',stack:['z₀']}]);
   const [currentStatesNPDA, setCurrentStatesNPDA] = useState([{}]) // for stepwise NPDA
 
+  //TM
+  const [tape,setTape] = useState('')
+
   //Loading
   const fileInputRef = useRef(null);
 
@@ -84,6 +88,7 @@ const AutomataSimulator = () => {
     }, time);
   };  
 
+  //Addnode to random pos inside bouding box
   const boundingBox = {
     width: 400,
     height: 400,
@@ -157,17 +162,18 @@ const AutomataSimulator = () => {
         const existingTransition = newMap[selectedNode.id].find(
           (t) => t.targetid === targetNode.id
         );
+        //handle if the label already exists
         if (existingTransition) {
-            if(automataType!=="DPDA"&&automataType!=="NPDA"){
-              const existingSymbols = new Set(existingTransition.label.split(','));
-              const newSymbols = symbol.split(',').map((s) => s.trim());
-              newSymbols.forEach((s) => existingSymbols.add(s));
-              existingTransition.label = Array.from(existingSymbols).join(',');
-            }else{
+            if(automataType==="DPDA"||automataType==="NPDA"){
               const existingSymbols = new Set(existingTransition.label.split(' | '));
               const newSymbols = symbol.split(' | ').map((s) => s.trim());
               newSymbols.forEach((s) => existingSymbols.add(s));
               existingTransition.label = Array.from(existingSymbols).join(' | ');    
+            }else{
+              const existingSymbols = new Set(existingTransition.label.split(','));
+              const newSymbols = symbol.split(',').map((s) => s.trim());
+              newSymbols.forEach((s) => existingSymbols.add(s));
+              existingTransition.label = Array.from(existingSymbols).join(',');
             }
         } else {
           const newTransition = {
@@ -237,7 +243,7 @@ const AutomataSimulator = () => {
       setSelectedNode(null)
     }
   };
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, 300));
   const getNodeById = (id) => nodeMap[id];
 
   //RUN DFA
@@ -468,9 +474,49 @@ const AutomataSimulator = () => {
     }
   }
 
+//TM
+  //Mealy
+  const handleRunTM = async () => {
+    if (!nodeMap["q0"]) return;
+    if (isRunning) return;
+    ReactDOM.unstable_batchedUpdates(()=>{
+      setIsRunning(true);
+      if (isRunningStepWise) setIsRunningStepWise(false);
+      setShowQuestion(false);
+      setSelectedNode(null);
+      setHighlightedTransition([]);
+      setAcceptanceResult(null);
+      setStepIndex(2);
+    })
+    await TM(nodeMap,transitionMap,inputString,
+      setIsRunning,setShowQuestion,
+      setAcceptanceResult,sleep,
+      setStepIndex,setTape,finalNodes,getNodeById,setCurrNode,highlightTransitions)
+    }
+  const handleStepTM = async () => {
+    if(isRunning)return
+    if (!isRunningStepWise) {
+      // Initialize stepwise run
+      resetStepWise();
+      ReactDOM.unstable_batchedUpdates(() => {
+        setCurrNode([nodeMap["q0"]])
+        setStepIndex(2);
+        setIsRunningStepWise(true);
+        setIsStepCompleted(true)
+        setAcceptanceResult(null);
+        setTape("BB"+inputString+"B")
+      })
+    } else {
+      if (!isStepCompleted) return;
+      TMStep(transitionMap,setIsRunningStepWise,
+        setAcceptanceResult,sleep,stepIndex,setStepIndex,tape,setTape,finalNodes,getNodeById,currNode,
+        setCurrNode,highlightTransitions,setIsStepCompleted
+      )
+    }
+  };
 
   const handleWheel = (e) => {
-    e.evt.preventDefault();
+    e.evt.preventDefault()
     const scaleBy = 1.1;
     const stage = e.target.getStage();
     const oldScale = stageProps.scale;
@@ -566,6 +612,7 @@ const AutomataSimulator = () => {
       case "DPDA": return handleRunDPDA
       case "NPDA": return handleRunNPDA
       case "MEALY": return handleRunMEALY
+      case "TM": return handleRunTM
       default: console.error("Wrong Automata Type")
     }
   }
@@ -576,6 +623,7 @@ const AutomataSimulator = () => {
       case "DPDA": return handleStepDPDA
       case "NPDA": return handleStepNPDA
       case "MEALY": return handleRunStepMEALY
+      case "TM": return handleStepTM
       default: console.error("Wrong Automata Type")
     }
   }
@@ -672,10 +720,23 @@ const AutomataSimulator = () => {
         <option value="NFA">NFA</option>
         <option value="DPDA">DPDA</option>
         <option value="NPDA">NPDA</option>
+        <option value="TM">TM</option>
         <option value="MEALY">MEALY</option>
       </select>
 
-      {inputString.split('').map((char,index) => {
+     {automataType==="TM"?tape.split('').map((char,index) => {
+          return <span key={index} style={{position:"absolute",
+            bottom:10, left:480+index*30,zIndex:100,
+            width:10,
+            textAlign:'center',
+            backgroundColor: (index===stepIndex)?theme.red:theme.background,
+            color:(index===stepIndex)?'white':theme.black,
+            borderColor: (index===stepIndex)?theme.red:theme.black,
+            userSelect:"none",
+            padding:10, borderStyle:"solid", borderRadius:0, borderWidth:1}}>{char}</span>
+        })
+      :
+        inputString.split('').map((char,index) => {
           return <span key={index} style={{position:"absolute",
             bottom:10, left:480+index*40,zIndex:100, 
             backgroundColor: (index===stepIndex)?theme.red:theme.background,
@@ -683,7 +744,8 @@ const AutomataSimulator = () => {
             borderColor: (index===stepIndex)?theme.red:theme.black,
             userSelect:"none",
             padding:10, borderStyle:"solid", borderRadius:5, borderWidth:1}}>{char}</span>
-        })}
+        })
+      }
 
       {automataType==="DPDA"&&stack.map((element,index)=>{
         return (
