@@ -1,4 +1,4 @@
-import React, { useState,useEffect,useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Stage, Layer } from "react-konva";
 import InputPopup from './components/InputPopup';
 import ReactDOM from 'react-dom';
@@ -6,11 +6,11 @@ import DrawTransitions from "./draw/DrawTransitions";
 import DrawNodes from "./draw/DrawNodes";
 import DrawGrid from "./draw/DrawGrid";
 import { DPDA, DPDAStep } from "./logic/DPDA"
-import { NPDA, NPDAStep,computeEpsilonClosure } from "./logic/NPDA"
-import { DFA, DFAStep }from './logic/DFA'
-import { NFA, NFAStep }from './logic/NFA'
-import { Mealy, MealyStep }from './logic/Mealy'
-import { TM,TMStep }from './logic/TM'
+import { NPDA, NPDAStep, computeEpsilonClosure } from "./logic/NPDA"
+import { DFA, DFAStep } from './logic/DFA'
+import { NFA, NFAStep } from './logic/NFA'
+import { Mealy, MealyStep } from './logic/Mealy'
+import { TM, TMStep } from './logic/TM'
 import { lightTheme, darkTheme } from "./theme";
 
 const AutomataSimulator = () => {
@@ -46,19 +46,19 @@ const AutomataSimulator = () => {
   //Symbol Input Popup
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [targetNode, setTargetNode] = useState(null);
-  
+
   //DFA OR NFA
-  const [automataType,setAutomataType] = useState("DFA");
+  const [automataType, setAutomataType] = useState("DFA");
 
   //DPDA STACK
   const [stack, setStack] = useState(['z₀']);
 
   //NPDA STACK
-  const [stackContents, setStackContents] = useState([{node:'q0',stack:['z₀']}]);
+  const [stackContents, setStackContents] = useState([{ node: 'q0', stack: ['z₀'] }]);
   const [currentStatesNPDA, setCurrentStatesNPDA] = useState([{}]) // for stepwise NPDA
 
   //TM
-  const [tape,setTape] = useState('')
+  const [tape, setTape] = useState('')
 
   //Loading
   const fileInputRef = useRef(null);
@@ -66,7 +66,7 @@ const AutomataSimulator = () => {
   //theme
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
-    return savedTheme === "dark" ? darkTheme : lightTheme;
+    return savedTheme === "light" ? lightTheme : darkTheme;
   });
 
   useEffect(() => {
@@ -81,12 +81,16 @@ const AutomataSimulator = () => {
     };
   }, []);
 
-  const highlightTransitions = (transitions,time=500) => {
+  useEffect(() => {
+    setTape("BB"+inputString+"B")
+  }, [inputString]);
+
+  const highlightTransitions = (transitions, time = 500) => {
     setHighlightedTransition(transitions);
     setTimeout(() => {
       setHighlightedTransition([]);
     }, time);
-  };  
+  };
 
   //Addnode to random pos inside bouding box
   const boundingBox = {
@@ -117,18 +121,18 @@ const AutomataSimulator = () => {
   };
 
   const deleteNode = () => {
-    if (selectedNode&&selectedNode.id!=="q0") {
+    if (selectedNode && selectedNode.id !== "q0") {
       ReactDOM.unstable_batchedUpdates(() => {
         setNodeMap((prev) => {
-            const newNodeMap = { ...prev };
-            delete newNodeMap[selectedNode.id];
-            return newNodeMap;
+          const newNodeMap = { ...prev };
+          delete newNodeMap[selectedNode.id];
+          return newNodeMap;
         });
         setTransitionMap((prev) => {
           const updatedTransitionMap = Object.fromEntries(
             Object.entries(prev).map(([key, transitions]) => [key,
               transitions.filter((transition) =>
-                  transition.sourceid !== selectedNode.id && transition.targetid !== selectedNode.id
+                transition.sourceid !== selectedNode.id && transition.targetid !== selectedNode.id
               ),
             ])
           );
@@ -138,8 +142,8 @@ const AutomataSimulator = () => {
             }
           });
           return { ...updatedTransitionMap };
-        });        
-        setFinalNodes((prev) => 
+        });
+        setFinalNodes((prev) =>
           new Set([...prev].filter(nodeid => nodeid !== selectedNode.id))
         );
         setSelectedNode(null);
@@ -148,7 +152,7 @@ const AutomataSimulator = () => {
   }
   const handleDragMove = (e, nodeid) => {
     const { x, y } = e.target.position();
-    setNodeMap((prev) => ({ ...prev, [nodeid]: { id: nodeid, x:x, y:y } }));
+    setNodeMap((prev) => ({ ...prev, [nodeid]: { id: nodeid, x: x, y: y } }));
   };
 
   const handleSymbolInputSubmit = (symbol) => {
@@ -164,17 +168,17 @@ const AutomataSimulator = () => {
         );
         //handle if the label already exists
         if (existingTransition) {
-            if(automataType==="DPDA"||automataType==="NPDA"){
-              const existingSymbols = new Set(existingTransition.label.split(' | '));
-              const newSymbols = symbol.split(' | ').map((s) => s.trim());
-              newSymbols.forEach((s) => existingSymbols.add(s));
-              existingTransition.label = Array.from(existingSymbols).join(' | ');    
-            }else{
-              const existingSymbols = new Set(existingTransition.label.split(','));
-              const newSymbols = symbol.split(',').map((s) => s.trim());
-              newSymbols.forEach((s) => existingSymbols.add(s));
-              existingTransition.label = Array.from(existingSymbols).join(',');
-            }
+          if (automataType === "DPDA" || automataType === "NPDA") {
+            const existingSymbols = new Set(existingTransition.label.split(' | '));
+            const newSymbols = symbol.split(' | ').map((s) => s.trim());
+            newSymbols.forEach((s) => existingSymbols.add(s));
+            existingTransition.label = Array.from(existingSymbols).join(' | ');
+          } else {
+            const existingSymbols = new Set(existingTransition.label.split(','));
+            const newSymbols = symbol.split(',').map((s) => s.trim());
+            newSymbols.forEach((s) => existingSymbols.add(s));
+            existingTransition.label = Array.from(existingSymbols).join(',');
+          }
         } else {
           const newTransition = {
             label: symbol.split(',').map((s) => s.trim()).join(','),
@@ -190,7 +194,7 @@ const AutomataSimulator = () => {
     }
     setIsPopupOpen(false);
   };
-  
+
   const handleInputClose = () => {
     setIsPopupOpen(false);
     setSelectedNode(null);
@@ -198,8 +202,8 @@ const AutomataSimulator = () => {
   };
 
   const handleNodeClick = (node) => {
-    if(isRunning)return
-    ReactDOM.unstable_batchedUpdates(()=>{
+    if (isRunning) return
+    ReactDOM.unstable_batchedUpdates(() => {
       setIsStepCompleted(true);
       setIsRunningStepWise(false);
       setShowQuestion(false);
@@ -209,7 +213,7 @@ const AutomataSimulator = () => {
       setStepIndex(0);
       setHighlightedTransition([]);
       setStack(['z₀'])
-      setStackContents([{node:'q0',stack:['z₀']}])
+      setStackContents([{ node: 'q0', stack: ['z₀'] }])
     })
 
     if (!selectedNode) {
@@ -222,7 +226,7 @@ const AutomataSimulator = () => {
   const handleStageClick = (e) => {
     if (e.target === e.target.getStage()) {
       setSelectedNode(null);
-      setStageProps((prev)=>({
+      setStageProps((prev) => ({
         ...prev,
         draggable: true
       }));
@@ -240,7 +244,6 @@ const AutomataSimulator = () => {
         }
         return newFinalNodes;
       });
-      setSelectedNode(null)
     }
   };
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, 300));
@@ -250,7 +253,7 @@ const AutomataSimulator = () => {
   const handleRun = async () => {
     if (!nodeMap["q0"]) return;
     if (isRunning) return;
-    ReactDOM.unstable_batchedUpdates(()=>{
+    ReactDOM.unstable_batchedUpdates(() => {
       setIsRunning(true);
       if (isRunningStepWise) setIsRunningStepWise(false);
       setShowQuestion(false);
@@ -259,17 +262,17 @@ const AutomataSimulator = () => {
       setAcceptanceResult(null);
       setStepIndex(0);
     })
-    DFA(inputString,transitionMap,nodeMap,setShowQuestion,setIsRunning,setAcceptanceResult,
-      sleep,highlightTransitions,setCurrNode,setStepIndex,finalNodes,getNodeById)
+    DFA(inputString, transitionMap, nodeMap, setShowQuestion, setIsRunning, setAcceptanceResult,
+      sleep, highlightTransitions, setCurrNode, setStepIndex, finalNodes, getNodeById)
   };
 
   //Prepare Stepwise DFA
-  const onStepWiseClick = async() => {
-    if(isRunning) return;
-    if(!nodeMap["q0"]) return;
-    if(isRunningStepWise){
+  const onStepWiseClick = async () => {
+    if (isRunning) return;
+    if (!nodeMap["q0"]) return;
+    if (isRunningStepWise) {
       handleStepWise();
-    }else{
+    } else {
       resetStepWise();
       setCurrNode([nodeMap["q0"]]);
       setIsRunningStepWise(true);
@@ -280,12 +283,12 @@ const AutomataSimulator = () => {
     if (!isStepCompleted) return;
     setIsStepCompleted(false);
     DFAStep(
-      inputString,stepIndex,setStepIndex,currNode,setCurrNode,transitionMap
-      ,setShowQuestion,setIsRunningStepWise,setAcceptanceResult,highlightTransitions
-      ,sleep,getNodeById,setIsStepCompleted,finalNodes)
+      inputString, stepIndex, setStepIndex, currNode, setCurrNode, transitionMap
+      , setShowQuestion, setIsRunningStepWise, setAcceptanceResult, highlightTransitions
+      , sleep, getNodeById, setIsStepCompleted, finalNodes)
   };
   const resetStepWise = () => {
-    ReactDOM.unstable_batchedUpdates(()=>{
+    ReactDOM.unstable_batchedUpdates(() => {
       setShowQuestion(false);
       setSelectedNode(null)
       setAcceptanceResult(null)
@@ -294,7 +297,7 @@ const AutomataSimulator = () => {
       setHighlightedTransition([]);
       setCurrEpsilonTrans([])
       setStepIndex(0);
-      setStackContents([{node:'q0',stack:['z₀']}])
+      setStackContents([{ node: 'q0', stack: ['z₀'] }])
       setStack(['z₀'])
     })
   };
@@ -328,12 +331,12 @@ const AutomataSimulator = () => {
     setSelectedNode(null);
     setAcceptanceResult(null);
     setCurrNode(epsilonClosure([nodeMap["q0"]]))
-    NFA([nodeMap["q0"]],setStepIndex,sleep,inputString,
-      setIsRunning,finalNodes,setAcceptanceResult,transitionMap,getNodeById,setShowQuestion,
-      setCurrNode,highlightTransitions,setCurrEpsilonTrans,epsilonClosure)
+    NFA([nodeMap["q0"]], setStepIndex, sleep, inputString,
+      setIsRunning, finalNodes, setAcceptanceResult, transitionMap, getNodeById, setShowQuestion,
+      setCurrNode, highlightTransitions, setCurrEpsilonTrans, epsilonClosure)
   }
   const onNFAStepClick = () => {
-    if(isRunning)return
+    if (isRunning) return
     if (!isRunningStepWise) {
       // Initialize stepwise run
       resetStepWise();
@@ -345,9 +348,9 @@ const AutomataSimulator = () => {
     } else {
       if (isRunning) return;
       if (!isStepCompleted) return;
-      NFAStep(currNode,setStepIndex,stepIndex,sleep,inputString,
-        setIsRunningStepWise,finalNodes,setAcceptanceResult,transitionMap,getNodeById,setShowQuestion,
-        setCurrNode,highlightTransitions,setCurrEpsilonTrans,setIsStepCompleted,epsilonClosure); // Execute a single step
+      NFAStep(currNode, setStepIndex, stepIndex, sleep, inputString,
+        setIsRunningStepWise, finalNodes, setAcceptanceResult, transitionMap, getNodeById, setShowQuestion,
+        setCurrNode, highlightTransitions, setCurrEpsilonTrans, setIsStepCompleted, epsilonClosure); // Execute a single step
     }
   };
 
@@ -365,12 +368,12 @@ const AutomataSimulator = () => {
       setStepIndex(0);
     })
     DPDA(nodeMap["q0"], setIsRunning, setCurrNode, inputString, transitionMap,
-      setStack,sleep,highlightTransitions,getNodeById,
-      setStepIndex,finalNodes,setAcceptanceResult,setShowQuestion
+      setStack, sleep, highlightTransitions, getNodeById,
+      setStepIndex, finalNodes, setAcceptanceResult, setShowQuestion
     )
   };
   const handleStepDPDA = async () => {
-    if(isRunning)return
+    if (isRunning) return
     if (!isRunningStepWise) {
       // Initialize stepwise run
       resetStepWise();
@@ -384,8 +387,8 @@ const AutomataSimulator = () => {
     } else {
       if (!isStepCompleted) return;
       DPDAStep(currNode, setCurrNode, inputString, transitionMap,
-        stack,setStack,sleep,highlightTransitions,getNodeById,stepIndex,
-        setStepIndex,finalNodes,setAcceptanceResult,setShowQuestion,setIsRunningStepWise,
+        stack, setStack, sleep, highlightTransitions, getNodeById, stepIndex,
+        setStepIndex, finalNodes, setAcceptanceResult, setShowQuestion, setIsRunningStepWise,
         setIsStepCompleted
       )
     }
@@ -407,11 +410,11 @@ const AutomataSimulator = () => {
     })
     NPDA(nodeMap["q0"], setIsRunning, setCurrNode, inputString,
       transitionMap, setStackContents, sleep, highlightTransitions, getNodeById,
-      setStepIndex, finalNodes, setAcceptanceResult,setCurrEpsilonTrans,setShowQuestion
+      setStepIndex, finalNodes, setAcceptanceResult, setCurrEpsilonTrans, setShowQuestion
     )
   };
   const handleStepNPDA = async () => {
-    if(isRunning)return
+    if (isRunning) return
     if (!isRunningStepWise) {
       // Initialize stepwise run
       resetStepWise();
@@ -431,9 +434,9 @@ const AutomataSimulator = () => {
       })
     } else {
       if (!isStepCompleted) return;
-      NPDAStep(currentStatesNPDA,setCurrentStatesNPDA,inputString,stepIndex,transitionMap,setCurrNode,
-        setStackContents,setStepIndex,setAcceptanceResult,setCurrEpsilonTrans,
-        highlightTransitions,setIsRunningStepWise,getNodeById,finalNodes,sleep,setShowQuestion,setIsStepCompleted
+      NPDAStep(currentStatesNPDA, setCurrentStatesNPDA, inputString, stepIndex, transitionMap, setCurrNode,
+        setStackContents, setStepIndex, setAcceptanceResult, setCurrEpsilonTrans,
+        highlightTransitions, setIsRunningStepWise, getNodeById, finalNodes, sleep, setShowQuestion, setIsStepCompleted
       )
     }
   };
@@ -442,7 +445,7 @@ const AutomataSimulator = () => {
   const handleRunMEALY = async () => {
     if (!nodeMap["q0"]) return;
     if (isRunning) return;
-    ReactDOM.unstable_batchedUpdates(()=>{
+    ReactDOM.unstable_batchedUpdates(() => {
       setIsRunning(true);
       if (isRunningStepWise) setIsRunningStepWise(false);
       setShowQuestion(false);
@@ -451,35 +454,35 @@ const AutomataSimulator = () => {
       setAcceptanceResult(null);
       setStepIndex(0);
     })
-    Mealy(inputString, transitionMap, nodeMap, setShowQuestion, setIsRunning, 
-      setAcceptanceResult, sleep, highlightTransitions, setCurrNode, 
+    Mealy(inputString, transitionMap, nodeMap, setShowQuestion, setIsRunning,
+      setAcceptanceResult, sleep, highlightTransitions, setCurrNode,
       setStepIndex, getNodeById)
-    }
+  }
   //Prepare Stepwise DFA
-  const handleRunStepMEALY = async() => {
-    if(isRunning) return;
-    if(!nodeMap["q0"]) return;
-    if(isRunningStepWise){
+  const handleRunStepMEALY = async () => {
+    if (isRunning) return;
+    if (!nodeMap["q0"]) return;
+    if (isRunningStepWise) {
       if (selectedNode) setSelectedNode(null);
       if (!isStepCompleted) return;
       MealyStep(
         currNode, setCurrNode, inputString, acceptanceResult,
-        transitionMap, stepIndex,setStepIndex,getNodeById,highlightTransitions,
-        setAcceptanceResult, setShowQuestion,setIsRunningStepWise,
-        setIsStepCompleted,sleep)
-    }else{
+        transitionMap, stepIndex, setStepIndex, getNodeById, highlightTransitions,
+        setAcceptanceResult, setShowQuestion, setIsRunningStepWise,
+        setIsStepCompleted, sleep)
+    } else {
       resetStepWise();
       setCurrNode([nodeMap["q0"]]);
       setIsRunningStepWise(true);
     }
   }
 
-//TM
+  //TM
   //Mealy
   const handleRunTM = async () => {
     if (!nodeMap["q0"]) return;
     if (isRunning) return;
-    ReactDOM.unstable_batchedUpdates(()=>{
+    ReactDOM.unstable_batchedUpdates(() => {
       setIsRunning(true);
       if (isRunningStepWise) setIsRunningStepWise(false);
       setShowQuestion(false);
@@ -488,13 +491,13 @@ const AutomataSimulator = () => {
       setAcceptanceResult(null);
       setStepIndex(2);
     })
-    await TM(nodeMap,transitionMap,inputString,
-      setIsRunning,setShowQuestion,
-      setAcceptanceResult,sleep,
-      setStepIndex,setTape,finalNodes,getNodeById,setCurrNode,highlightTransitions)
-    }
+    await TM(nodeMap, transitionMap, inputString,
+      setIsRunning, setShowQuestion,
+      setAcceptanceResult, sleep,
+      setStepIndex, setTape, finalNodes, getNodeById, setCurrNode, highlightTransitions)
+  }
   const handleStepTM = async () => {
-    if(isRunning)return
+    if (isRunning) return
     if (!isRunningStepWise) {
       // Initialize stepwise run
       resetStepWise();
@@ -504,13 +507,13 @@ const AutomataSimulator = () => {
         setIsRunningStepWise(true);
         setIsStepCompleted(true)
         setAcceptanceResult(null);
-        setTape("BB"+inputString+"B")
+        setTape("BB" + inputString + "B")
       })
     } else {
       if (!isStepCompleted) return;
-      TMStep(transitionMap,setIsRunningStepWise,
-        setAcceptanceResult,sleep,stepIndex,setStepIndex,tape,setTape,finalNodes,getNodeById,currNode,
-        setCurrNode,highlightTransitions,setIsStepCompleted
+      TMStep(transitionMap, setIsRunningStepWise,
+        setAcceptanceResult, sleep, stepIndex, setStepIndex, tape, setTape, finalNodes, getNodeById, currNode,
+        setCurrNode, highlightTransitions, setIsStepCompleted
       )
     }
   };
@@ -527,7 +530,7 @@ const AutomataSimulator = () => {
       y: (pointer.y - stageProps.y) / oldScale,
     };
     newScale = Math.min(Math.max(newScale, 0.5), 4.0); //limits
-    setStageProps((prev)=>({
+    setStageProps((prev) => ({
       x: pointer.x - mousePointTo.x * newScale,
       y: pointer.y - mousePointTo.y * newScale,
       scale: newScale,
@@ -542,13 +545,13 @@ const AutomataSimulator = () => {
     }));
   };
   const nodeMouseDown = () => {
-    setStageProps((prev)=>({
+    setStageProps((prev) => ({
       ...prev,
       draggable: false
     }));
   }
   const nodeMouseUp = () => {
-    setStageProps((prev)=>({
+    setStageProps((prev) => ({
       ...prev,
       draggable: true
     }));
@@ -573,7 +576,12 @@ const AutomataSimulator = () => {
           setNodeNum(importedData.nodeNum || 0);
           setAutomataType(importedData.automataType || "DFA");
           setInputString(importedData.inputString || "");
-          setStageProps(importedData.stageProps || { x: 0,y: 0,scale: 1,draggable: true})
+          setStageProps(importedData.stageProps || { x: 0, y: 0, scale: 1, draggable: true })
+
+          setIsRunning(false);
+          setIsRunningStepWise(false);
+          setCurrEpsilonTrans([]);
+          resetStepWise();
         } catch (error) {
           console.error("Error parsing imported data:", error);
           alert("Failed to import data. Invalid file format.");
@@ -605,8 +613,8 @@ const AutomataSimulator = () => {
   };
 
   //RUN STEP BUTTONS
-  function run(){
-    switch (automataType){
+  function run() {
+    switch (automataType) {
       case "DFA": return handleRun
       case "NFA": return NFARUN
       case "DPDA": return handleRunDPDA
@@ -616,8 +624,8 @@ const AutomataSimulator = () => {
       default: console.error("Wrong Automata Type")
     }
   }
-  function step(){
-    switch (automataType){
+  function step() {
+    switch (automataType) {
       case "DFA": return onStepWiseClick
       case "NFA": return onNFAStepClick
       case "DPDA": return handleStepDPDA
@@ -628,264 +636,619 @@ const AutomataSimulator = () => {
     }
   }
   return (
-    <div style={{ position: "relative" }}>
-      <img
-      onClick={() => setTheme(theme === lightTheme ? darkTheme : lightTheme)}
-      width={20}
-      alt={'theme'}
-      color="red"
-      style={{ cursor:'pointer',position: "absolute", top: 9, right: 130, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 0}}
-      src={theme===lightTheme?require('./assets/sun.png'):require('./assets/moon.png')}
-      />
-      <button
-        onClick={handleAddNode}
-        style={{ position: "absolute", top: 10, left: 10, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.blue }}
-      >
-        Add Node
-      </button>
-      <button
-        onClick={handleImportClick}
-        style={{ position: "absolute", top: 10, right: 70, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.blue }}
-      >
-        Load
-      </button>
-      <button
-        onClick={handleExportClick}
-        style={{ position: "absolute", top: 10, right: 10, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.blue }}
-      >
-        Save
-      </button>
-      <input
-        inputMode="text"
-        placeholder="Enter String"
-        value={inputString}
-        maxLength={26}
-        readOnly={isRunning || isRunningStepWise}
-        onChange={(e) => setInputString(e.target.value.trim()) }
-        style={{ backgroundColor:theme.background,color:theme.black,position: "absolute", bottom: 10, left: 10, zIndex: 10, padding: 15,borderWidth: 1,borderStyle:'solid',borderRadius: 5 }}
-      />
-
-      <button
-        onClick={run()}
-        style={{ position: "absolute", bottom: 10, left: 310, zIndex: 10, padding: 13, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.green }}
-      >
-        Run
-      </button>
-      <button
-        onClick={step()}
-        style={{ position: "absolute", bottom: 10, left: 380, zIndex: 10, padding: 13, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: theme.blue }}
-      >
-        Step
-      </button>
-      {/**handleSetFinal */}
-      {selectedNode && (
-        <button
-          onClick={handleSetFinal}
-          style={{ position: "absolute", top: 10, left: 105, zIndex: 10, padding: 10, border: 'solid', borderRadius: 5, borderWidth: 1, color: "white", backgroundColor: "black" }}
-        >
-          Set Final
-        </button>
-      )}
-      {selectedNode&&selectedNode.id!=="q0"&&(
-        <img
-          onClick={deleteNode}
-          width={29}
-          alt="del"
-          src={require("./assets/delete.png")}
-          style={{cursor:"pointer",position: "absolute", top: 10, left: 200, zIndex: 10,padding:6, border: 'solid', borderRadius: 5, borderWidth: 0, color: "white", backgroundColor: "red" }}
-        />
-      )}
-
-      {selectedNode &&
-        <span style={{ position: "absolute", bottom: 5, right: 60, zIndex: 10, padding: 15, color: "grey" }}>Select a node to add transition</span>
-      }
-      {acceptanceResult && (
-        <div style={{ position: "absolute", bottom: 70, left: 10, zIndex: 10, color: acceptanceResult.toLowerCase().includes("✔") ? "#32CD32" : "red", backgroundColor:acceptanceResult.toLowerCase().includes("✔")?theme.greenTrans:theme.redTrans,
-          paddingLeft:10,paddingRight:10,paddingTop:5,paddingBottom:5, borderRadius:5,fontSize: 18, fontWeight: "bold" }}>
-          {acceptanceResult}
-        </div>
-      )}
-
-      <select style={{ position: "absolute", bottom: 10, left: 210, zIndex: 10, height:45,width:80,padding:10, color: theme.black,backgroundColor:theme.background,borderStyle:'solid',borderRadius:5 }}
-        value={automataType}
-        name="automataType"
-        onChange={(e) => {setAutomataType(e.target.value)
-          setIsRunning(false)
-          setIsRunningStepWise(false);
-          setCurrEpsilonTrans([])
-          resetStepWise()
-        }}
-      >
-        <option value="DFA">DFA</option>
-        <option value="NFA">NFA</option>
-        <option value="DPDA">DPDA</option>
-        <option value="NPDA">NPDA</option>
-        <option value="TM">TM</option>
-        <option value="MEALY">MEALY</option>
-      </select>
-
-     {automataType==="TM"?tape.split('').map((char,index) => {
-          return <span key={index} style={{position:"absolute",
-            bottom:10, left:480+index*30,zIndex:100,
-            width:10,
-            textAlign:'center',
-            backgroundColor: (index===stepIndex)?theme.red:theme.background,
-            color:(index===stepIndex)?'white':theme.black,
-            borderColor: (index===stepIndex)?theme.red:theme.black,
-            userSelect:"none",
-            padding:10, borderStyle:"solid", borderRadius:0, borderWidth:1}}>{char}</span>
-        })
-      :
-        inputString.split('').map((char,index) => {
-          return <span key={index} style={{position:"absolute",
-            bottom:10, left:480+index*40,zIndex:100, 
-            backgroundColor: (index===stepIndex)?theme.red:theme.background,
-            color:(index===stepIndex)?'white':theme.black,
-            borderColor: (index===stepIndex)?theme.red:theme.black,
-            userSelect:"none",
-            padding:10, borderStyle:"solid", borderRadius:5, borderWidth:1}}>{char}</span>
-        })
-      }
-
-      {automataType==="DPDA"&&stack.map((element,index)=>{
-        return (
-          <span key={`${element}-${index}`} style={{position:"absolute",
-          bottom:100+(index*24), right:(index===stack.length-1)?54:55,zIndex:100,
-          width:100,
-          textAlign:"center",
-          backgroundColor:theme.background,
-          color:theme.black,
-          userSelect:"none",
-          borderWidth:(index===stack.length-1)?3:1,
-          padding:2, borderStyle:"solid", borderRadius:0,}}>{element}</span>
-        )
-      })}
-
-    {automataType==="NPDA"&&stackContents.map((stack, stackIndex) => (
-        <div key={`stack-${stackIndex}`} style={{ position: 'absolute',
-          bottom: 30,right:(stackIndex*70),zIndex:100,
-         }}>
-          {stack.stack.map((element, index) => (
-            <span
-              key={`${element}-${index}`}
-              style={{
-                position: 'absolute',
-                bottom: 100 + (index * 24),
-                right: (index === stack.stack.length - 1) ? 53.5 : 55,
-                zIndex: 100,
-                width: 50,
-                textAlign: 'center',
-                backgroundColor: theme.background,
-                color: theme.black,
-                userSelect: 'none',
-                borderWidth: (index === stack.stack.length - 1) ? 3 : 1,
-                padding: 2,
-                borderStyle: 'solid',
-                borderRadius: 0,
-              }}
-            >
-              {element}
-            </span>
-          ))}
-          <span key={stackIndex}
-            style={{position:"absolute",
+    <div style={{
+      position: "relative",
+      height: "100vh",
+      overflow: "hidden",
+      backgroundColor: theme === lightTheme ? "#f5f5f5" : "#1a1a1a"
+    }}>
+      {/* Top Navigation Bar */}
+      <div style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: "56px",
+        backgroundColor: theme === lightTheme ? "white" : "#242424",
+        borderBottom: `1px solid ${theme.border}`,
+        display: "flex",
+        alignItems: "center",
+        padding: "0 24px",
+        gap: "15px",
+        zIndex: 100,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+      }}>
+        {/* Logo */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px"
+        }}>
+          <h1 style={{
+            margin: 0,
+            fontSize: "20px",
+            fontWeight: "600",
+            userSelect: 'none',
             color: theme.black,
-            userSelect:"none",
-            bottom:75, right:74,zIndex:100}}>{stack.node}</span>
+          }}>
+            Automata Simulator
+          </h1>
         </div>
-      ))}
-
-      {automataType==="DPDA"&&
-        <span style={{position:"absolute",
-          color: theme.black,
-          userSelect:"none",
-          bottom:75, right:85,zIndex:100}}>Stack</span>
-      }
-    
-      <Stage
-        width={window.innerWidth}
-        height={window.innerHeight}
-        style={{ background:theme===lightTheme?'white':'#1f1f1f', cursor: stageProps.draggable && stageDragging? "grabbing": "default"}}
-        x={stageProps.x}
-        y={stageProps.y}
-        draggable={stageProps.draggable && stageDragging}
-        onClick={handleStageClick}
-        {...(stageProps.draggable && stageDragging ? { onDragMove: handleDragMoveScreen } : {})}
-        onWheel={handleWheel}
-        
-        //desktop
-        onPointerDown={(event)=> {if(event.evt.button === 0||event.evt.button === 1){
-          setIsStageDragging(true);
-        }}}
-        onPointerUp={(event)=> {if(event.evt.button === 0||event.evt.button === 1){
-          setIsStageDragging(false);
-        }}}
-        //mobile
-        onTouchStart={() => setIsStageDragging(true)}
-        onTouchEnd={() => setIsStageDragging(false)}
-
-        scaleX={stageProps.scale}  
-        scaleY={stageProps.scale}  
-      >
-        <Layer>
-          {/* Grid Background */}
-          <DrawGrid
-            size={20}
-            color={theme.grid}
-            stageProps={stageProps}
+        {/* File Operations */}
+        <div
+        style={{
+          flex: 1
+        }}
+        />
+        <button
+          onClick={handleImportClick}
+          style={{
+            padding: "8px 12px",
+            border: `1px solid ${theme.border}`,
+            borderRadius: "6px",
+            backgroundColor: "transparent",
+            color: theme.black,
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: "500",
+            transition: "all 0.2s",
+            marginLeft: 'auto',
+            userSelect: 'none',
+          }}
+        >
+          Load
+        </button>
+        <button
+          onClick={handleExportClick}
+          style={{
+            padding: "8px 12px",
+            border: `1px solid ${theme.border}`,
+            borderRadius: "6px",
+            backgroundColor: "transparent",
+            color: theme.black,
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: "500",
+            transition: "all 0.2s",
+            userSelect: 'none',
+          }}
+        >
+          Save
+        </button>
+        {/* Theme Toggle */}
+        <button
+          onClick={() => setTheme(theme === lightTheme ? darkTheme : lightTheme)}
+          style={{
+            padding: "8px",
+            border: "none",
+            borderRadius: "6px",
+            backgroundColor: theme === lightTheme ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginLeft: "auto",
+            transition: "all 0.2s"
+          }}
+        >
+          <img
+            width={18}
+            alt={'theme'}
+            src={theme === lightTheme ? require('./assets/sun.png') : require('./assets/moon.png')}
           />
+        </button>
+      </div>
 
-          {/* Render Transitions */}
-          {Object.entries(transitionMap).map(([key,transitions])=>{
-            return transitions.map((transition)=>{
-              return(
-                <DrawTransitions
-                  transition={transition}
-                  epsilonTrans={currEpsilonTrans}
-                  key={transition.targetid+key+transition.label}
-                  highlightedTransition={highlightedTransition}
-                  transitionMap={transitionMap}
-                  setTransitionMap={setTransitionMap}
-                  getNodeById={(id)=>getNodeById(id)}
+      {/* Main Content Area */}
+      <div style={{
+        position: "fixed",
+        top: "56px",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: "flex",
+        overflow: "hidden"
+      }}>
+        {/* Main Canvas Area */}
+        <div style={{
+          flex: 1,
+          position: "relative",
+          overflow: "hidden",
+          backgroundColor: theme === lightTheme ? "white" : "#242424"
+        }}>
+  
+          {/* Stack Display for DPDA */}
+          {automataType === "DPDA" && (
+            <div style={{
+              position: "absolute",
+              bottom: "60px",
+              right: "24px",
+              zIndex: 10,
+              display: "flex",
+              flexDirection: "column",
+              flexFlow: 'column-reverse',
+              gap: "6px",
+              userSelect:"none",
+            }}>
+              <span style={{
+                color: theme.black,
+                fontSize: "14px",
+                fontWeight: "500",
+                letterSpacing: "0.5px",
+                alignSelf: 'center',
+              }}>
+                Stack
+              </span>
+              {stack.map((element, index) => (
+                <span
+                  key={`${element}-${index}`}
+                  style={{
+                    width: "80px",
+                    height: "28px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: theme.background,
+                    color: theme.black,
+                    border: `${index === stack.length - 1 ? "2px" : "1px"} solid ${theme.black}`,
+                    borderRadius: "6px",
+                    userSelect: "none",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                  }}
+                >
+                  {element}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Stack Display for NPDA */}
+          {automataType === "NPDA" && (
+            <div style={{
+              position: "absolute",
+              bottom: "60px",
+              right: "24px",
+              zIndex: 10,
+              display: "flex",
+              gap: "20px",
+              userSelect:"none",
+              pointerEvents: "none",
+              flexFlow:'row-reverse'
+            }}>
+              {stackContents.map((stack, stackIndex) => (
+                <div key={`stack-${stackIndex}`} style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  flexFlow: 'column-reverse',
+                }}>
+                  <span style={{
+                    color: theme.black,
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    letterSpacing: "0.5px"
+                  }}>
+                    {stack.node}
+                  </span>
+                  {stack.stack.map((element, index) => (
+                    <span
+                      key={`${element}-${index}`}
+                      style={{
+                        width: "50px",
+                        height: "28px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: theme.background,
+                        color: theme.black,
+                        border: `${index === stack.stack.length - 1 ? "3px" : "1px"} solid ${theme.black}`,
+                        borderTopWidth: index===stack.stack.length-1?'3px':'1px',
+                        borderBottomWidth: index===stack.stack.length-1?'2px':index===0?'1px':'0px',
+                        userSelect: "none",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                      }}
+                    >
+                      {element}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Stage Component */}
+          <Stage
+            width={window.innerWidth - 280}
+            height={window.innerHeight - 56 - 50}
+            style={{
+              background: theme === lightTheme ? "white" : "#242424",
+              cursor: stageProps.draggable && stageDragging ? "grabbing" : "default",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: "50px",
+            }}
+            x={stageProps.x}
+            y={stageProps.y}
+            draggable={stageProps.draggable && stageDragging}
+            onClick={handleStageClick}
+            {...(stageProps.draggable && stageDragging ? { onDragMove: handleDragMoveScreen } : {})}
+            onWheel={handleWheel}
+            onPointerDown={(event) => {
+              if (event.evt.button === 0 || event.evt.button === 1) {
+                setIsStageDragging(true);
+              }
+            }}
+            onPointerUp={(event) => {
+              if (event.evt.button === 0 || event.evt.button === 1) {
+                setIsStageDragging(false);
+              }
+            }}
+            onTouchStart={() => setIsStageDragging(true)}
+            onTouchEnd={() => setIsStageDragging(false)}
+            scaleX={stageProps.scale}
+            scaleY={stageProps.scale}
+          >
+            <Layer>
+              <DrawGrid
+                size={20}
+                color={theme.grid}
+                stageProps={stageProps}
+              />
+              {Object.entries(transitionMap).map(([key, transitions]) => {
+                return transitions.map((transition) => (
+                  <DrawTransitions
+                    transition={transition}
+                    epsilonTrans={currEpsilonTrans}
+                    key={transition.targetid + key + transition.label}
+                    highlightedTransition={highlightedTransition}
+                    transitionMap={transitionMap}
+                    setTransitionMap={setTransitionMap}
+                    getNodeById={(id) => getNodeById(id)}
+                    theme={theme}
+                  />
+                ));
+              })}
+              {Object.entries(nodeMap).map(([id, node]) => (
+                <DrawNodes
+                  key={node.id}
+                  node={node}
+                  currNode={currNode}
+                  selectedNode={selectedNode}
+                  finalNodes={finalNodes}
+                  showQuestion={showQuestion}
+                  handleNodeClick={handleNodeClick}
+                  handleDragMove={handleDragMove}
+                  nodeMouseDown={nodeMouseDown}
+                  nodeMouseUp={nodeMouseUp}
+                  questionImage={image}
                   theme={theme}
                 />
-              )
-            })
-          })}
+              ))}
+            </Layer>
+          </Stage>
+        </div>
 
-          {/* Render Nodes */}
-          {Object.entries(nodeMap).map(([id,node])=>{
-            return(
-              <DrawNodes
-                key={node.id}
-                node={node}
-                currNode={currNode}
-                selectedNode={selectedNode}
-                finalNodes={finalNodes}
-                showQuestion={showQuestion}
-                handleNodeClick={handleNodeClick}
-                handleDragMove={handleDragMove}
-                nodeMouseDown={nodeMouseDown}
-                nodeMouseUp={nodeMouseUp}
-                questionImage={image}
-                theme={theme}
-              />
-            )
-          })}
-        </Layer>
-      </Stage>
+        {/* Right Panel - Controls */}
+        <div style={{
+          width: "280px",
+          height: "100%",
+          backgroundColor: theme === lightTheme ? "white" : "#242424",
+          borderLeft: `1px solid ${theme.border}`,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden"
+        }}>
+          {/* Automata Type Selector */}
+          <div style={{
+            padding: "16px",
+            borderBottom: `1px solid ${theme.border}`
+          }}>
+            <h2 style={{
+              margin: "0 0 12px 0",
+              fontSize: "14px",
+              fontWeight: "600",
+              color: theme.black,
+              letterSpacing: "0.5px"
+            }}>
+              Automata Type
+            </h2>
+            <select
+              value={automataType}
+              onChange={(e) => {
+                setAutomataType(e.target.value);
+                setIsRunning(false);
+                setIsRunningStepWise(false);
+                setCurrEpsilonTrans([]);
+                resetStepWise();
+              }}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: `1px solid ${theme.border}`,
+                borderRadius: "6px",
+                backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                color: theme.black,
+                fontSize: "13px",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              <option value="DFA">DFA</option>
+              <option value="NFA">NFA</option>
+              <option value="DPDA">DPDA</option>
+              <option value="NPDA">NPDA</option>
+              <option value="TM">TM</option>
+              <option value="MEALY">MEALY</option>
+            </select>
+          </div>
+
+          {/* State Controls */}
+          <div style={{
+            padding: "16px",
+            borderBottom: `1px solid ${theme.border}`
+          }}>
+            <h2 style={{
+              margin: "0 0 12px 0",
+              fontSize: "14px",
+              fontWeight: "600",
+              color: theme.black,
+              letterSpacing: "0.5px"
+            }}>
+              State Controls
+            </h2>
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px"
+            }}>
+              <button
+                onClick={handleAddNode}
+                style={{
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: "6px",
+                  backgroundColor: theme.blue,
+                  color: "white",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "500",
+                  transition: "all 0.2s"
+                }}
+              >
+                Add New State
+              </button>
+
+              {selectedNode && (
+                <div style={{
+                  display: "flex",
+                  gap: "8px"
+                }}>
+                  <button
+                    onClick={handleSetFinal}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      border: "none",
+                      borderRadius: "6px",
+                      backgroundColor: theme === lightTheme ? "#2c3e50" : "#34495e",
+                      color: "white",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    Set Final
+                  </button>
+                  {selectedNode.id !== "q0" && (
+                    <button
+                      onClick={deleteNode}
+                      style={{
+                        padding: "4px",
+                        width: 40,
+                        border: "none",
+                        borderRadius: "6px",
+                        backgroundColor: "#e74c3c",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <img
+                        width={25}
+                        alt="del"
+                        src={require("./assets/delete.png")}
+                      />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Input String */}
+          <div style={{
+            padding: "16px",
+            borderBottom: `1px solid ${theme.border}`,
+            overflow: "hidden"
+          }}>
+            <h2 style={{
+              margin: "0 0 12px 0",
+              fontSize: "14px",
+              fontWeight: "600",
+              color: theme.black,
+              letterSpacing: "0.5px"
+            }}>
+              Input String
+            </h2>
+            <input
+              inputMode="text"
+              placeholder="Enter string to test"
+              value={inputString}
+              maxLength={26}
+              readOnly={isRunning || isRunningStepWise}
+              onChange={(e) => setInputString(e.target.value.trim())}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: `1px solid ${theme.border}`,
+                borderRadius: "6px",
+                backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                color: theme.black,
+                fontSize: "13px",
+                transition: "all 0.2s",
+                boxSizing: "border-box"
+              }}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{
+            padding: "16px",
+            borderBottom: `1px solid ${theme.border}`,
+            display: "flex",
+            gap: "8px"
+          }}>
+            <button
+              onClick={run()}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                border: "none",
+                borderRadius: "6px",
+                backgroundColor: theme.green,
+                color: "white",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "500",
+                transition: "all 0.2s"
+              }}
+            >
+              Run
+            </button>
+            <button
+              onClick={step()}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                border: "none",
+                borderRadius: "6px",
+                backgroundColor: theme.blue,
+                color: "white",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "500",
+                transition: "all 0.2s"
+              }}
+            >
+              Step
+            </button>
+          </div>
+           {/* Acceptance Result */}
+           {acceptanceResult && (
+            <div style={{
+              padding: "16px",
+              borderBottom: `1px solid ${theme.border}`
+            }}>
+              <h2 style={{
+                margin: "0 0 12px 0",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: theme.black,
+                letterSpacing: "0.5px"
+              }}>
+                Result
+              </h2>
+              <div style={{
+                color: acceptanceResult.toLowerCase().includes("✔") ? "#32CD32" : "#e74c3c",
+                fontSize: "13px",
+                fontWeight: "600",
+                padding: "8px 12px",
+                backgroundColor: acceptanceResult.toLowerCase().includes("✔") ? theme.greenTrans : theme.redTrans,
+                borderRadius: "6px"
+              }}>
+                {acceptanceResult}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Bar with Input String Display */}
+        <div style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: "280px",
+          height: "50px",
+          backgroundColor: theme === lightTheme ? "white" : "#242424",
+          borderTop: `1px solid ${theme.border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 16px",
+          zIndex: 10
+        }}>
+          {/* Input String Characters Display */}
+          <div style={{
+            display: "flex",
+            gap: "0px"
+          }}>
+            {(automataType === "TM" ? tape : inputString).split('').map((char, index) => (
+              <span
+                key={index}
+                style={{
+                  width: automataType === "TM" ? "28px" : "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: (index === stepIndex) ? theme.red : theme.background,
+                  color: (index === stepIndex) ? "white" : theme.black,
+                  userSelect: "none",
+
+                  borderTopWidth:'1px',
+                  borderBottomWidth:'1px',
+                  borderStyle: 'solid',
+                  borderColor: theme.black,
+                  borderLeftWidth: '1px',
+                  borderRightWidth: index===(automataType === "TM" ? tape : inputString).length-1?'1px':'0px',
+                  borderTopRightRadius: index===(automataType === "TM" ? tape : inputString).length-1?'6px':'0px',
+                  borderBottomRightRadius: index===(automataType === "TM" ? tape : inputString).length-1?'6px':'0px',
+                  borderTopLeftRadius: index===0?'6px':'0px',
+                  borderBottomLeftRadius: index===0?'6px':'0px',
+
+                  fontSize: "16px",
+                  fontWeight: "500",
+                  transition: "all 0.2s"
+                }}
+              >
+                {char}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div style={{ position: "relative" }}>
-       <InputPopup
-        isOpen={isPopupOpen}
-        onClose={handleInputClose}
-        onSubmit={handleSymbolInputSubmit}
-        automataType={automataType}
-        theme={theme}
-      />
+        <InputPopup
+          isOpen={isPopupOpen}
+          onClose={handleInputClose}
+          onSubmit={handleSymbolInputSubmit}
+          automataType={automataType}
+          theme={theme}
+        />
       </div>
       <input
         type="file"
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
         accept=".json"
         onChange={handleFileChange}
         ref={fileInputRef}

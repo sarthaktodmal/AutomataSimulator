@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import crossIcon from '../assets/cross5.png'
 
 const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilonTrans, transitionMap, setTransitionMap, getNodeById, theme }) => {
+
     //Helper
     const calculateArrowPoints = (sourceX, sourceY, targetX, targetY, radius) => {
         const angle = Math.atan2(targetY - sourceY, targetX - sourceX);
@@ -18,6 +19,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
     const [progress, setProgress] = useState(0)
     const [, setIsAnimating] = useState(false)
 
+    //filling effect
     useEffect(() => {
         if (highlightedTransition && highlightedTransition.includes(transition)) {
             setIsAnimating(true)
@@ -48,20 +50,29 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
         const loopX = x;
         const loopY = y - radius - loopRadius;
         const arrowAngle = Math.PI / 18;
-
+    
+        // Function to measure text width
+        const measureTextWidth = (text) => {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            context.font = '14px Arial'; // Match font size and family
+            return context.measureText(text).width;
+        };
+        // Calculate text width
+        const textWidth = measureTextWidth(label);
         return (
             <Group>
                 <Shape
                     sceneFunc={(context, shape) => {
                         context.beginPath();
-
+    
                         // Move to the start of the arc without drawing a line
                         const startAngle = Math.PI / 1.37;
                         const endAngle = startAngle + (2.15 * Math.PI * 2.15) / 3; // 2/3 of a circle
-
+    
                         // Calculate current angle based on progress
                         const currentAngle = startAngle + (endAngle - startAngle) * progress;
-
+    
                         if (isHighlighted) {
                             // Draw the black background arc
                             context.beginPath();
@@ -69,7 +80,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                             context.strokeStyle = theme.black;
                             context.lineWidth = 2;
                             context.stroke();
-
+    
                             // Draw the red progress arc
                             context.beginPath();
                             context.arc(loopX, loopY, radius, startAngle, currentAngle);
@@ -100,22 +111,25 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                     pointerLength={10}
                     pointerWidth={10}
                 />
+                {/* Centered Rectangle */}
                 <Rect
-                    x={loopX - label.length * 3 - 6}
-                    y={loopY - loopRadius - 20}
-                    width={(loopX + label.length * 3) - (loopX - label.length * 3) + 10}
-                    height={18}
+                    x={loopX - (textWidth / 2) - 5}
+                    y={loopY - loopRadius - 26}
+                    width={textWidth + 10}
+                    height={24}
                     fill={theme.background}
                     opacity={0.8}
+                    cornerRadius={5}
                 />
+                {/* Centered Text */}
                 <Text
                     onMouseEnter={handlemouseEnter}
                     onMouseLeave={handlemouseLeave}
                     onClick={lineCLick}
-                    x={loopX - label.length * 3 - 3}
-                    y={loopY - loopRadius - 18}
+                    x={loopX - (textWidth / 2)}
+                    y={loopY - loopRadius - 20}
                     text={label}
-                    fontSize={16}
+                    fontSize={14}
                     fill={theme.black}
                     align="center"
                     verticalAlign="middle"
@@ -123,6 +137,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
             </Group>
         );
     };
+    
 
     const calculateCurvedArrowPoints = (
         sourceX,
@@ -189,6 +204,14 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
             return updatedTransitionMap
         });
     }
+    
+    //Calculate Position of Label Background
+    const measureTextWidth = (text) => {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        context.font = '14px Arial'; // Set to match your Text component's font
+        return context.measureText(text).width;
+    };
 
     //------------Main--------------
 
@@ -225,6 +248,18 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
             30,
         ));
     }
+
+    // Calculate text width and height
+    const textWidth = measureTextWidth(edge.label);
+    const textHeight = 16;
+    // Calculate text position
+    const textX = isReverse
+        ? calculateMidpointX(startX, controlX, endX) - textWidth / 2
+        : (startX + endX - textWidth) / 2;
+
+    const textY = isReverse
+        ? calculateMidpointY(startY, controlY, endY)
+        : (startY + endY - textHeight) / 2;
 
     return (
         <Group>
@@ -338,25 +373,19 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                 onClick={lineCLick}
             >
                 <Rect
-                    x={isReverse ? calculateMidpointX(startX, controlX, endX) - (edge.label.length * 3.2) - 3 : (startX + endX - (edge.label.length * 6.5)) / 2 - 4}
-                    y={isReverse ? calculateMidpointY(startY, controlY, endY) - 5 : (startY + endY) / 2 - 10}
-                    width={edge.label.length * 7 + 10}
-                    height={20}
+                    x={textX}
+                    y={isReverse?textY-7:textY-5}
+                    width={textWidth + 10}
+                    height={textHeight + 8}
                     fill={theme.background}
                     opacity={0.8}
-                    blurRadius={2}
+                    cornerRadius={5}
                 />
                 <Text
-                    x={isReverse ?
-                        calculateMidpointX(startX, controlX, endX) - (edge.label.length * 6) / 2 :
-                        (startX + endX - (edge.label.length * 6)) / 2
-                    }
-                    y={isReverse ?
-                        calculateMidpointY(startY, controlY, endY) :
-                        (startY + endY - 15) / 2
-                    }
+                    x={textX+5}
+                    y={isReverse?textY-1:textY+1}
                     text={edge.label}
-                    fontSize={16}
+                    fontSize={14}
                     fill={theme.black}
                     align="center"
                     verticalAlign="middle"
