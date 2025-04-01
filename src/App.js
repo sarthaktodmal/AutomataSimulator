@@ -121,6 +121,25 @@ const AutomataSimulator = () => {
     setNodeMap((prev) => ({ ...prev, [newNode.id]: newNode }));
   };
 
+  const clearAll = () =>{
+    ReactDOM.unstable_batchedUpdates(() => {
+      setNodeMap({})
+      setTransitionMap({})
+      setSelectedNode(null)
+      setFinalNodes(new Set())
+      setInputString("")
+      setCurrNode([])
+      setNodeNum(0);
+      setAcceptanceResult(null)
+      setCurrEpsilonTrans([])
+      setShowQuestion(false)
+      setStack(['z₀'])
+      setStackContents([{ node: 'q0', stack: ['z₀'] }])
+      setCurrentStatesNPDA([{}])
+      setTape('')
+    })
+  } 
+
   const deleteNode = () => {
     if (selectedNode && selectedNode.id !== "q0") {
       ReactDOM.unstable_batchedUpdates(() => {
@@ -688,6 +707,24 @@ const AutomataSimulator = () => {
             flex: 1
           }}
         />
+        {nodeNum!==0&&<button
+          onClick={clearAll}
+          style={{
+            padding: "8px 12px",
+            border: `1px solid ${theme.border}`,
+            borderRadius: "6px",
+            backgroundColor: "transparent",
+            color: theme.black,
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: "500",
+            transition: "all 0.2s",
+            marginLeft: 'auto',
+            userSelect: 'none',
+          }}
+        >
+          Clear All
+        </button>}
         <button
           onClick={handleImportClick}
           style={{
