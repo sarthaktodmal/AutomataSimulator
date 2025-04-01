@@ -373,16 +373,16 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                 onClick={lineCLick}
             >
                 <Rect
-                    x={textX}
+                    x={isReverse?textX:textX-5}
                     y={isReverse?textY-7:textY-5}
                     width={textWidth + 10}
                     height={textHeight + 8}
                     fill={theme.background}
-                    opacity={0.8}
+                    opacity={0.9}
                     cornerRadius={5}
                 />
                 <Text
-                    x={textX+5}
+                    x={isReverse?textX+5:textX}
                     y={isReverse?textY-1:textY+1}
                     text={edge.label}
                     fontSize={14}

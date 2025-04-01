@@ -14,6 +14,14 @@ const lightTheme = {
     background: 'white',
     grid: "#A6A6A6",
     border: "rgba(0, 0, 0, 0.25)",
+
+    exampleItemBack: '#FFFFFF',
+    exampleItemBorder: "rgba(0, 0, 0, 0.25)",
+    exampleItemHoverBack: '#ededed',
+    exampleItemHoverBorder: '#CCCCCC',
+    exampleItemSecondary: '#333333',
+    exampleItemImageBorder: '#DDDDDD',
+    exampleItemShadow: 'rgba(0, 0, 0, 0.2)', 
 };
 //#E0F8E0
 const darkTheme = {
@@ -31,6 +39,15 @@ const darkTheme = {
     selected: '#000c78',
     selected2: '#1877F2',
     border: "rgba(255, 255, 255, 0.15)",
+
+    exampleItemBack: '#1f1f1f',
+    exampleItemBorder: "rgba(255, 255, 255, 0.15)",
+    exampleItemHoverBack: '#2A2A2A',
+    exampleItemHoverBorder: '#3A3A3A',
+    exampleItemSecondary: '#AAAAAA',
+    exampleItemImageBorder: '#333333',
+    exampleItemShadow: 'rgba(0, 0, 0, 0.2)',
+
 };
 
 export { lightTheme, darkTheme };  

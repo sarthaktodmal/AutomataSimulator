@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Stage, Layer } from "react-konva";
-import InputPopup from './components/InputPopup';
+import InputPopup from './components/inputs/InputPopup';
 import ReactDOM from 'react-dom';
 import DrawTransitions from "./draw/DrawTransitions";
 import DrawNodes from "./draw/DrawNodes";
@@ -12,6 +12,7 @@ import { NFA, NFAStep } from './logic/NFA'
 import { Mealy, MealyStep } from './logic/Mealy'
 import { TM, TMStep } from './logic/TM'
 import { lightTheme, darkTheme } from "./theme";
+import ExampleMenu from "./components/ExampleMenu";
 
 const AutomataSimulator = () => {
   const [nodeMap, setNodeMap] = useState({});
@@ -82,7 +83,7 @@ const AutomataSimulator = () => {
   }, []);
 
   useEffect(() => {
-    setTape("BB"+inputString+"B")
+    setTape("BB" + inputString + "B")
   }, [inputString]);
 
   const highlightTransitions = (transitions, time = 500) => {
@@ -562,7 +563,6 @@ const AutomataSimulator = () => {
   const handleImportClick = () => {
     fileInputRef.current.click();
   };
-  // Function to handle file selection
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -570,18 +570,7 @@ const AutomataSimulator = () => {
       reader.onload = (e) => {
         try {
           const importedData = JSON.parse(e.target.result);
-          setNodeMap(importedData.nodeMap || {});
-          setTransitionMap(importedData.transitionMap || {});
-          setFinalNodes(new Set(importedData.finalNodes) || new Set());
-          setNodeNum(importedData.nodeNum || 0);
-          setAutomataType(importedData.automataType || "DFA");
-          setInputString(importedData.inputString || "");
-          setStageProps(importedData.stageProps || { x: 0, y: 0, scale: 1, draggable: true })
-
-          setIsRunning(false);
-          setIsRunningStepWise(false);
-          setCurrEpsilonTrans([]);
-          resetStepWise();
+          loadAutomataData(importedData);
         } catch (error) {
           console.error("Error parsing imported data:", error);
           alert("Failed to import data. Invalid file format.");
@@ -589,6 +578,20 @@ const AutomataSimulator = () => {
       };
       reader.readAsText(file);
     }
+  };
+  const loadAutomataData = (data) => {
+    setNodeMap(data.nodeMap || {});
+    setTransitionMap(data.transitionMap || {});
+    setFinalNodes(new Set(data.finalNodes) || new Set());
+    setNodeNum(data.nodeNum || 0);
+    setAutomataType(data.automataType || "DFA");
+    setInputString(data.inputString || "");
+    setStageProps(data.stageProps || { x: 0, y: 0, scale: 1, draggable: true });
+  
+    setIsRunning(false);
+    setIsRunningStepWise(false);
+    setCurrEpsilonTrans([]);
+    resetStepWise();
   };
   const handleExportClick = () => {
     const data = {
@@ -664,6 +667,11 @@ const AutomataSimulator = () => {
           alignItems: "center",
           gap: "12px"
         }}>
+          <ExampleMenu
+          theme={theme}
+          lightheme={lightTheme}
+          onClick={(file)=>loadAutomataData(file)}
+          />
           <h1 style={{
             margin: 0,
             fontSize: "20px",
@@ -676,9 +684,9 @@ const AutomataSimulator = () => {
         </div>
         {/* File Operations */}
         <div
-        style={{
-          flex: 1
-        }}
+          style={{
+            flex: 1
+          }}
         />
         <button
           onClick={handleImportClick}
@@ -699,7 +707,7 @@ const AutomataSimulator = () => {
           Load
         </button>
         <button
-          onClick={handleExportClick}
+          onClick={(e)=>handleExportClick(e)}
           style={{
             padding: "8px 12px",
             border: `1px solid ${theme.border}`,
@@ -756,7 +764,7 @@ const AutomataSimulator = () => {
           overflow: "hidden",
           backgroundColor: theme === lightTheme ? "white" : "#242424"
         }}>
-  
+
           {/* Stack Display for DPDA */}
           {automataType === "DPDA" && (
             <div style={{
@@ -768,7 +776,7 @@ const AutomataSimulator = () => {
               flexDirection: "column",
               flexFlow: 'column-reverse',
               gap: "6px",
-              userSelect:"none",
+              userSelect: "none",
             }}>
               <span style={{
                 color: theme.black,
@@ -813,9 +821,9 @@ const AutomataSimulator = () => {
               zIndex: 10,
               display: "flex",
               gap: "20px",
-              userSelect:"none",
+              userSelect: "none",
               pointerEvents: "none",
-              flexFlow:'row-reverse'
+              flexFlow: 'row-reverse'
             }}>
               {stackContents.map((stack, stackIndex) => (
                 <div key={`stack-${stackIndex}`} style={{
@@ -828,7 +836,8 @@ const AutomataSimulator = () => {
                     color: theme.black,
                     fontSize: "14px",
                     fontWeight: "500",
-                    letterSpacing: "0.5px"
+                    letterSpacing: "0.5px",
+                    marginTop: "5px",
                   }}>
                     {stack.node}
                   </span>
@@ -844,8 +853,8 @@ const AutomataSimulator = () => {
                         backgroundColor: theme.background,
                         color: theme.black,
                         border: `${index === stack.stack.length - 1 ? "3px" : "1px"} solid ${theme.black}`,
-                        borderTopWidth: index===stack.stack.length-1?'3px':'1px',
-                        borderBottomWidth: index===stack.stack.length-1?'2px':index===0?'1px':'0px',
+                        borderTopWidth: index === stack.stack.length - 1 ? '3px' : '1px',
+                        borderBottomWidth: index === stack.stack.length - 1 ? '2px' : index === 0 ? '1px' : '0px',
                         userSelect: "none",
                         fontSize: "14px",
                         fontWeight: "500",
@@ -1044,7 +1053,7 @@ const AutomataSimulator = () => {
                       transition: "all 0.2s"
                     }}
                   >
-                    Set Final
+                    Toggle Final State
                   </button>
                   {selectedNode.id !== "q0" && (
                     <button
@@ -1152,8 +1161,8 @@ const AutomataSimulator = () => {
               Step
             </button>
           </div>
-           {/* Acceptance Result */}
-           {acceptanceResult && (
+          {/* Acceptance Result */}
+          {acceptanceResult && (
             <div style={{
               padding: "16px",
               borderBottom: `1px solid ${theme.border}`
@@ -1179,6 +1188,7 @@ const AutomataSimulator = () => {
               </div>
             </div>
           )}
+         
         </div>
 
         {/* Bottom Bar with Input String Display */}
@@ -1214,16 +1224,16 @@ const AutomataSimulator = () => {
                   color: (index === stepIndex) ? "white" : theme.black,
                   userSelect: "none",
 
-                  borderTopWidth:'1px',
-                  borderBottomWidth:'1px',
+                  borderTopWidth: '1px',
+                  borderBottomWidth: '1px',
                   borderStyle: 'solid',
                   borderColor: theme.black,
                   borderLeftWidth: '1px',
-                  borderRightWidth: index===(automataType === "TM" ? tape : inputString).length-1?'1px':'0px',
-                  borderTopRightRadius: index===(automataType === "TM" ? tape : inputString).length-1?'6px':'0px',
-                  borderBottomRightRadius: index===(automataType === "TM" ? tape : inputString).length-1?'6px':'0px',
-                  borderTopLeftRadius: index===0?'6px':'0px',
-                  borderBottomLeftRadius: index===0?'6px':'0px',
+                  borderRightWidth: index === (automataType === "TM" ? tape : inputString).length - 1 ? '1px' : '0px',
+                  borderTopRightRadius: index === (automataType === "TM" ? tape : inputString).length - 1 ? '6px' : '0px',
+                  borderBottomRightRadius: index === (automataType === "TM" ? tape : inputString).length - 1 ? '6px' : '0px',
+                  borderTopLeftRadius: index === 0 ? '6px' : '0px',
+                  borderBottomLeftRadius: index === 0 ? '6px' : '0px',
 
                   fontSize: "16px",
                   fontWeight: "500",

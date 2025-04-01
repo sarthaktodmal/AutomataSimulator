@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import DFAInput from './DFAInput'
 import NFAInput from './NFAInput'
 import PDAInput from './PDAInput'
