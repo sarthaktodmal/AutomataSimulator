@@ -61,23 +61,29 @@ const PDAInput = ({onClose,onSubmit,automataType,theme}) => {
           setPushInput('ε')
         }
       }
-      function z0click(){
-        if(PDAfocused===1){
-          stacktopRef.current.focus()
-          setStackTop('z₀')
-        }else if(PDAfocused===2){
-          pushRef.current.focus()
-          handlePushChange(`${pushInput}z₀`)
-        }
+    function z0click(){
+      if(PDAfocused===1){
+        stacktopRef.current.focus()
+        setStackTop('z₀')
+      }else if(PDAfocused===2){
+        pushRef.current.focus()
+        handlePushChange(`${pushInput}z₀`)
       }
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        handleSubmit();
+      }
+    };
     return(
-        <>
+        <div onKeyDown={handleKeyDown}>
         <input
             ref={inputsymRef}
             value={inputSym}
             type="text"
             placeholder='input'
             spellCheck="false"
+            autoComplete="off"
             name='inputsym'
             style={{
                 width: '18%',
@@ -100,6 +106,7 @@ const PDAInput = ({onClose,onSubmit,automataType,theme}) => {
             placeholder='stacktop'
             value={stackTop}
             spellCheck="false"
+            autoComplete="off"
             name='stacktop'
             onChange={handleStackTopChange}
             style={{
@@ -121,6 +128,7 @@ const PDAInput = ({onClose,onSubmit,automataType,theme}) => {
             type="text"
             value={pushInput}
             spellCheck="false"
+            autoComplete="off"
             name='push'
             onChange={handlePushChange}
             style={{
@@ -209,7 +217,7 @@ const PDAInput = ({onClose,onSubmit,automataType,theme}) => {
              Cancel
            </button>
         </div>
-        </>
+        </div>
     )
 }
 

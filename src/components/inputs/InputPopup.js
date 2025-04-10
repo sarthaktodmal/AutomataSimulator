@@ -2,7 +2,8 @@ import React from 'react';
 import DFAInput from './DFAInput'
 import NFAInput from './NFAInput'
 import PDAInput from './PDAInput'
-import MealyInput from './Mealy'
+import MealyInput from './MealyInput'
+import MooreInput from './MooreInput'
 import TMInput from './TMInput'
 
 const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
@@ -71,8 +72,15 @@ const InputPopup = ({ isOpen, onClose, onSubmit,automataType,theme }) => {
             theme={theme}
           />
         }
-         {(automataType==="TM")&&
+        {(automataType==="TM")&&
           <TMInput
+            onClose={onClose}
+            onSubmit={onSubmit}
+            theme={theme}
+          />
+        }
+        {(automataType==="MOORE")&&
+          <MooreInput
             onClose={onClose}
             onSubmit={onSubmit}
             theme={theme}

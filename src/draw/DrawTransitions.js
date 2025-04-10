@@ -112,7 +112,10 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                     pointerWidth={10}
                 />
                 {/* Centered Rectangle */}
-                <Rect
+                <Group onMouseEnter={handlemouseEnter}
+                    onMouseLeave={handlemouseLeave}
+                    onClick={lineClick}>
+                  <Rect
                     x={loopX - (textWidth / 2) - 5}
                     y={loopY - loopRadius - 26}
                     width={textWidth + 10}
@@ -123,9 +126,6 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                 />
                 {/* Centered Text */}
                 <Text
-                    onMouseEnter={handlemouseEnter}
-                    onMouseLeave={handlemouseLeave}
-                    onClick={lineCLick}
                     x={loopX - (textWidth / 2)}
                     y={loopY - loopRadius - 20}
                     text={label}
@@ -134,6 +134,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                     align="center"
                     verticalAlign="middle"
                 />
+                </Group>
             </Group>
         );
     };
@@ -192,18 +193,21 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
         container.style.cursor = "default"
         setIsHovering(false)
     }
-    const lineCLick = () => {
+    const lineClick = () => {
         setTransitionMap((prev) => {
-            const updatedTransitionMap = Object.fromEntries(
-                Object.entries(prev).map(([key, transitions_]) => [key,
-                    transitions_.filter((transition_) =>
-                        transition_ !== transition
-                    ),
-                ])
-            );
-            return updatedTransitionMap
+          const updatedTransitionMap = Object.fromEntries(
+            Object.entries(prev)
+              .map(([key, transitions_]) => {
+                const newTransitions = transitions_.filter(
+                  (transition_) => transition_ !== transition
+                );
+                return [key, newTransitions];
+              })
+              .filter(([key, newTransitions]) => newTransitions.length > 0)
+          );
+          return updatedTransitionMap;
         });
-    }
+      }
     
     //Calculate Position of Label Background
     const measureTextWidth = (text) => {
@@ -370,7 +374,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
             <Group
                 onMouseEnter={handlemouseEnter}
                 onMouseLeave={handlemouseLeave}
-                onClick={lineCLick}
+                onClick={lineClick}
             >
                 <Rect
                     x={isReverse?textX:textX-5}

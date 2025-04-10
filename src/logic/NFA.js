@@ -1,4 +1,3 @@
-import ReactDOM from 'react-dom';
 
 export async function NFA(initialNodes,setStepIndex,sleep,inputString,
     setIsRunning,finalNodes,setAcceptanceResult,transitionMap,getNodeById,setShowQuestion,
@@ -22,6 +21,7 @@ export async function NFA(initialNodes,setStepIndex,sleep,inputString,
         }
         const char = inputString[charIndex];
         let nextNodes = [];
+        let epsilonTrans = [];
         let transitionsToHighlight = [];
         let noTransitionFound = true;
 
@@ -39,6 +39,21 @@ export async function NFA(initialNodes,setStepIndex,sleep,inputString,
                 }
             }
         }
+        //Epsilon Self Loop
+        for (const currNode of currentNodes) {
+          const transitions = transitionMap[currNode.id];
+          const availablePaths = transitions ? transitions.filter(t => t.label.split(',').includes('ε')) : [];
+          if (availablePaths && availablePaths.length > 0) {
+              for (const path of availablePaths) {
+                if(path.targetid === currNode.id){
+                  const nextNode = getNodeById(path.targetid);
+                  nextNodes.push(nextNode);
+                  epsilonTrans.push(path)
+                }
+              }
+          }
+        }
+
         if (nextNodes.length === 0 && noTransitionFound) {
             setIsRunning(false);
             setShowQuestion(true);
@@ -48,8 +63,9 @@ export async function NFA(initialNodes,setStepIndex,sleep,inputString,
         await sleep(400);
         setCurrNode([]);
         highlightTransitions(transitionsToHighlight);
-        setCurrEpsilonTrans([]);
+        setCurrEpsilonTrans((prev)=>[...prev,epsilonTrans])
         await sleep(500);
+        setCurrEpsilonTrans([]);
 
         stack.push({ nodes: nextNodes, charIndex: charIndex + 1 });
         setCurrNode(epsilonClosure(nextNodes));
@@ -68,6 +84,7 @@ export async function NFAStep(
     const char = inputString[stepIndex];
     let currentNodes = epsilonClosure(currNode);
     let nextNodes = [];
+    let epsilonTrans = [];
     let transitionsToHighlight = [];
 
     if(!char){
@@ -83,13 +100,28 @@ export async function NFAStep(
       if (availablePaths&&availablePaths.length > 0) {
         for (const path of availablePaths) {
           const nextNode = getNodeById(path.targetid);
-          if (nextNode && !nextNodes.includes(nextNode)) {
+          if (nextNode) {
             nextNodes.push(nextNode);
             transitionsToHighlight.push(path);
           }
         }
       }
     }
+    //Epsilon Self Loop
+    for (const currNode of currentNodes) {
+      const transitions = transitionMap[currNode.id];
+      const availablePaths = transitions ? transitions.filter(t => t.label.split(',').includes('ε')) : null;
+      if (availablePaths && availablePaths.length > 0) {
+          for (const path of availablePaths) {
+            if(path.targetid === currNode.id){
+              const nextNode = getNodeById(path.targetid);
+              nextNodes.push(nextNode);
+              epsilonTrans.push(path)
+            }
+          }
+      }
+    }
+
     if (nextNodes.length === 0 && transitionsToHighlight.length === 0) {
       setIsRunningStepWise(false);
       setShowQuestion(true);
@@ -97,12 +129,13 @@ export async function NFAStep(
       return;
     }else{
       highlightTransitions(transitionsToHighlight)
-      setCurrEpsilonTrans([])
+      setCurrEpsilonTrans((prev)=>[...prev,epsilonTrans])
       setCurrNode([])
       await sleep(500);
+      setCurrEpsilonTrans([])
       nextNodes = epsilonClosure(nextNodes)
       setCurrNode(nextNodes);
-      setStepIndex(stepIndex + 1);
+      setStepIndex(stepIndex + 1);  
     }
     if (stepIndex===inputString.length-1) {
       const isAccepted = nextNodes.some(node => finalNodes.has(node.id));

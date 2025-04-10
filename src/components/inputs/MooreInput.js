@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-const DFAInput = ({onClose,onSubmit,theme}) => {
+const MooreInput = ({onClose,onSubmit,theme}) => {
     const [inputValue, setInputValue] = useState('');
     const inputRef = useRef(null);
 
@@ -93,4 +93,4 @@ const DFAInput = ({onClose,onSubmit,theme}) => {
         </div>
     )
 }
-export default DFAInput
+export default MooreInput

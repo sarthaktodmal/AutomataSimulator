@@ -6,6 +6,8 @@ import automata_NFA from '../assets/examples/automata_NFA.json'
 import automata_MEALY from '../assets/examples/automata_MEALY.json'
 import automata_NPDA from '../assets/examples/automata_NPDA.json'
 import automata_DPDA from '../assets/examples/automata_DPDA.json'
+import automata_MOORE from '../assets/examples/automata_MOORE.json'
+import automata_TM2 from '../assets/examples/automata_TM_wcw.json'
 
 const ExampleMenu = ({ theme, lightheme, onClick }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,14 +18,17 @@ const ExampleMenu = ({ theme, lightheme, onClick }) => {
   const NFA = "Non-Deterministic FA"
   const NPDA = "Non-Deterministic PDA"
   const DPDA = "Deterministic PDA"
+  const MOORE = "Moore Machine"
 
   const examples = [
     { id: 1, name: "DFA for string that contains even no. of 1's and 0's", type: DFA, path: automata_DFA },
-    { id: 2, name: "NFA for string a^n where n is divisible by 3", type: NFA, path: automata_NFA },
-    { id: 3, name: 'DPDA for String with same no. of a and same no of b', type: DPDA, path: automata_DPDA },
+    { id: 2, name: "NFA for string a^n where n is divisible by 2 or 3", type: NFA, path: automata_NFA },
+    { id: 3, name: 'DPDA that accepts a^n b^n', type: DPDA, path: automata_DPDA },
     { id: 4, name: "NPDA for string WW^R where W={a,b}", type: NPDA, path: automata_NPDA },
     { id: 5, name: 'Turing Machine To Check WellForness of Parenthessis', type: TM, path: automata_TM },
-    { id: 6, name: 'Mealy Machine Example', type: MEALY, path: automata_MEALY },
+    { id: 6, name: 'Turing Machine To Accept wcw where w={a,b}', type: TM, path: automata_TM2 },
+    { id: 7, name: 'Mealy Machine Example', type: MEALY, path: automata_MEALY },
+    { id: 8, name: 'Moore Machine Example', type: MOORE, path: automata_MOORE },
   ];
 
   const toggleMenu = () => {
@@ -103,10 +108,10 @@ const ExampleMenu = ({ theme, lightheme, onClick }) => {
       maxHeight: 'calc(100vh - 100px)',
       overflowY: 'scroll',
       //Hide ScrollBar
-      '&::-webkit-scrollbar': {
+      '&::WebkitScrollbar': {
           display: 'none',
       },
-      '-ms-overflow-style': 'none',
+      'msOverflowStyle': 'none',
       scrollbarWidth: 'none',
     },
     

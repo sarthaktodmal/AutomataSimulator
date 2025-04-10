@@ -12,7 +12,7 @@ const NFAInput = ({onClose,onSubmit,theme}) => {
     const handleChange = (event) => {
         const rawValue = event.target.value;
         const cleanedValue = rawValue.replace(/,/g, '');
-        const formattedValue = cleanedValue.split('').join(',');
+        const formattedValue = [...new Set(cleanedValue.split(''))].join(',');
         setInputValue(formattedValue);
     };
     const handleSubmit = () => {
@@ -30,18 +30,25 @@ const NFAInput = ({onClose,onSubmit,theme}) => {
         CustomCommadInput(setInputValue,inputValue,'ε')
     }
     function CustomCommadInput(setTarget,target,input){
-        if (target!=='') {
-          setTarget((prev) => `${prev},${input}`)
-        }
-        else setInputValue(input)
+      if (target!=='') {
+        setTarget((prev) => `${prev},${input}`)
       }
+      else setInputValue(input)
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        handleSubmit();
+      }
+    };
     return(
-        <>
+        <div onKeyDown={handleKeyDown}>
         <input
           ref={inputRef}
           type="text"
           value={inputValue}
           spellCheck="false"
+          autoComplete="off"
           name='input'
           onChange={(e) => handleChange(e)}
           style={{
@@ -115,7 +122,7 @@ const NFAInput = ({onClose,onSubmit,theme}) => {
              Cancel
            </button>
         </div>
-        </>
+        </div>
     )
 }
 

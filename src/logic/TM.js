@@ -94,7 +94,7 @@ export async function TMStep(transitionMap,setIsRunningStepWise,
             return label.split('/')[0] === char
         })
     ):null;
-    console.log(transition)
+
     //Check if transition is nice
     if(!transition || transition.length===0){
         setIsStepCompleted(true)

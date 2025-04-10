@@ -20,10 +20,10 @@ export async function DPDA(
             return;
         }
         //getTransition
-        const transition = transitions.find((t)=>{
+        let transition = transitions.filter((t)=>{
             let found = false
             t.label.split(" | ").forEach(operation => {
-                const [leftSide, toPush] = operation.split('/');
+                const [leftSide, ] = operation.split('/');
                 const [inputSymbol, stackTop] = leftSide.split(',');
                 if (inputSymbol === char && stackTop === mystack[mystack.length - 1]) {
                     found = true
@@ -31,7 +31,7 @@ export async function DPDA(
             });
             return found;
         })
-        if (!transition) {
+        if (!transition || transition.length==0) {
             setShowQuestion(true);
             setIsRunning(false);
             setAcceptanceResult(`String Rejected: No transition for '${char}' with stack symbol '${mystack[mystack.length - 1]}'`);
@@ -40,9 +40,11 @@ export async function DPDA(
         if (transition.length>1) {
             setShowQuestion(true);
             setIsRunning(false);
-            setAcceptanceResult(`String Rejected: Multiple transitions for'${char}','${mystack[mystack.length - 1]}'`);
+            setAcceptanceResult(`String Rejected: Multiple transitions for '${char},${mystack[mystack.length - 1]}'`);
             return;
         }
+        transition = transition[0]
+
         await sleep(500);
         setCurrNode([]);
         highlightTransitions([transition]);
@@ -120,7 +122,7 @@ export async function DPDAStep(
         return;
     }
     //getTransition
-    const transition = transitions.find((t)=>{
+    let transition = transitions.filter((t)=>{
         let found = false
         t.label.split(" | ").forEach(operation => {
             const [leftSide, toPush] = operation.split('/');
@@ -133,20 +135,22 @@ export async function DPDAStep(
         return found;
     })
 
-    if (!transition) {
+    if (!transition || transition.length===0) {
         setShowQuestion(true);
         setIsRunningStepWise(false);
-        setAcceptanceResult(`No transition for '${char}' with stack symbol '${mystack[mystack.length - 1]}'`);
+        setAcceptanceResult(`String Rejected: No transition for '${char}' with stack symbol '${mystack[mystack.length - 1]}'`);
         setIsStepCompleted(true)
         return;
     }
     if (transition.length>1) {
         setShowQuestion(true);
         setIsRunningStepWise(false);
-        setAcceptanceResult(`Multiple transitions for'${char}'/'${mystack[mystack.length - 1]}'`);
+        setAcceptanceResult(`String Rejected: Multiple transitions for '${char}/${mystack[mystack.length - 1]}'`);
         setIsStepCompleted(true)
         return;
     }
+    transition = transition[0]
+
     setCurrNode([]);
     highlightTransitions([transition]);
     await sleep(500);

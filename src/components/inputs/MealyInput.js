@@ -17,13 +17,18 @@ export const MealyInput = ({onClose,onSubmit,theme}) => {
         setOutputMealy('')
         onClose();
     }
-
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        handleSubmit();
+      }
+    };
     return(
-        <>
+        <div onKeyDown={handleKeyDown}>
         <input
             type="text"
             value={inputMealy}
             spellCheck="false"
+            autoComplete="off"
             name='inputmealy'
             placeholder='input'
             maxLength={1}
@@ -45,6 +50,7 @@ export const MealyInput = ({onClose,onSubmit,theme}) => {
             type="text"
             value={outputMealy}
             spellCheck="false"
+            autoComplete="off"
             name='outputmealy'
             placeholder='output'
             maxLength={1}
@@ -97,7 +103,7 @@ export const MealyInput = ({onClose,onSubmit,theme}) => {
              Cancel
            </button>
         </div>
-        </>
+        </div>
     )
 }
 

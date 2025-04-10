@@ -10,9 +10,14 @@ import { NPDA, NPDAStep, computeEpsilonClosure } from "./logic/NPDA"
 import { DFA, DFAStep } from './logic/DFA'
 import { NFA, NFAStep } from './logic/NFA'
 import { Mealy, MealyStep } from './logic/Mealy'
+import { Moore, MooreStep } from './logic/Moore'
 import { TM, TMStep } from './logic/TM'
 import { lightTheme, darkTheme } from "./theme";
 import ExampleMenu from "./components/ExampleMenu";
+import AiAssistant from "./components/AiAssistant";
+import CharacterDialog from "./components/CharacterDialog";
+import { DeterminismChecker4DFA, DeterminismChecker4Mealy } from './logic/DeterminismChecker'
+
 
 const AutomataSimulator = () => {
   const [nodeMap, setNodeMap] = useState({});
@@ -56,13 +61,16 @@ const AutomataSimulator = () => {
 
   //NPDA STACK
   const [stackContents, setStackContents] = useState([{ node: 'q0', stack: ['z₀'] }]);
-  const [currentStatesNPDA, setCurrentStatesNPDA] = useState([{}]) // for stepwise NPDA
+  const [currentStatesNPDA, setCurrentStatesNPDA] = useState([{}]);
+  const [tape, setTape] = useState('');
+  const [dialogPosition, setDialogPosition] = useState({ x: 0, y: 0 });
+  const currentCharRef = useRef(null);
 
-  //TM
-  const [tape, setTape] = useState('')
+  //save load
+  let fileInputRef = useRef(null);
 
-  //Loading
-  const fileInputRef = useRef(null);
+  //Moore Output function
+  const [stateOutput, setStateOutput] = useState({})
 
   //theme
   const [theme, setTheme] = useState(() => {
@@ -85,6 +93,16 @@ const AutomataSimulator = () => {
   useEffect(() => {
     setTape("BB" + inputString + "B")
   }, [inputString]);
+
+  useEffect(() => {
+    if (isRunningStepWise && currentCharRef.current) {
+      const rect = currentCharRef.current.getBoundingClientRect();
+      setDialogPosition({
+        x: rect.left + 20 - rect.width / 2,
+        y: rect.top - 20
+      });
+    }
+  }, [stepIndex, isRunningStepWise]);
 
   const highlightTransitions = (transitions, time = 500) => {
     setHighlightedTransition(transitions);
@@ -121,7 +139,7 @@ const AutomataSimulator = () => {
     setNodeMap((prev) => ({ ...prev, [newNode.id]: newNode }));
   };
 
-  const clearAll = () =>{
+  const clearAll = () => {
     ReactDOM.unstable_batchedUpdates(() => {
       setNodeMap({})
       setTransitionMap({})
@@ -137,8 +155,11 @@ const AutomataSimulator = () => {
       setStackContents([{ node: 'q0', stack: ['z₀'] }])
       setCurrentStatesNPDA([{}])
       setTape('')
+      setIsRunning(false)
+      setIsRunningStepWise(false)
+      setStateOutput({});
     })
-  } 
+  }
 
   const deleteNode = () => {
     if (selectedNode && selectedNode.id !== "q0") {
@@ -168,6 +189,11 @@ const AutomataSimulator = () => {
         );
         setSelectedNode(null);
       })
+      //Remove from stateOutput (Moore)
+      setStateOutput(prev => {
+        const { [selectedNode.id]: removed, ...rest } = prev;
+        return rest;
+      });
     }
   }
   const handleDragMove = (e, nodeid) => {
@@ -273,6 +299,13 @@ const AutomataSimulator = () => {
   const handleRun = async () => {
     if (!nodeMap["q0"]) return;
     if (isRunning) return;
+    //VALIDATE DFA
+    const nonDet = [...DeterminismChecker4DFA(nodeMap, transitionMap)];
+    if (nonDet.length != 0) {
+      setAcceptanceResult(`Please Fix Non-Deterministic States: ${nonDet.join(', ')}`)
+      setIsRunningStepWise(false)
+      return;
+    }
     ReactDOM.unstable_batchedUpdates(() => {
       setIsRunning(true);
       if (isRunningStepWise) setIsRunningStepWise(false);
@@ -294,6 +327,13 @@ const AutomataSimulator = () => {
       handleStepWise();
     } else {
       resetStepWise();
+      //VALIDATE DFA
+      const nonDet = [...DeterminismChecker4DFA(nodeMap, transitionMap)];
+      if (nonDet.length != 0) {
+        setAcceptanceResult(`Please Fix Non-Deterministic States: ${nonDet.join(', ')}`)
+        setIsRunningStepWise(false)
+        return;
+      }
       setCurrNode([nodeMap["q0"]]);
       setIsRunningStepWise(true);
     }
@@ -465,6 +505,12 @@ const AutomataSimulator = () => {
   const handleRunMEALY = async () => {
     if (!nodeMap["q0"]) return;
     if (isRunning) return;
+    const nonDet = [...DeterminismChecker4Mealy(nodeMap, transitionMap)];
+    if (nonDet.length != 0) {
+      setAcceptanceResult(`Please Fix Non-Deterministic States: ${nonDet.join(', ')}`)
+      setIsRunningStepWise(false)
+      return;
+    }
     ReactDOM.unstable_batchedUpdates(() => {
       setIsRunning(true);
       if (isRunningStepWise) setIsRunningStepWise(false);
@@ -478,7 +524,7 @@ const AutomataSimulator = () => {
       setAcceptanceResult, sleep, highlightTransitions, setCurrNode,
       setStepIndex, getNodeById)
   }
-  //Prepare Stepwise DFA
+  //Prepare Stepwise
   const handleRunStepMEALY = async () => {
     if (isRunning) return;
     if (!nodeMap["q0"]) return;
@@ -492,13 +538,18 @@ const AutomataSimulator = () => {
         setIsStepCompleted, sleep)
     } else {
       resetStepWise();
+      const nonDet = [...DeterminismChecker4Mealy(nodeMap, transitionMap)];
+      if (nonDet.length != 0) {
+        setAcceptanceResult(`Please Fix Non-Deterministic States: ${nonDet.join(', ')}`)
+        setIsRunningStepWise(false)
+        return;
+      }
       setCurrNode([nodeMap["q0"]]);
       setIsRunningStepWise(true);
     }
   }
 
   //TM
-  //Mealy
   const handleRunTM = async () => {
     if (!nodeMap["q0"]) return;
     if (isRunning) return;
@@ -537,6 +588,62 @@ const AutomataSimulator = () => {
       )
     }
   };
+
+  //Moore
+  const handleRunMoore = async () => {
+    if (!nodeMap["q0"]) return;
+    if (isRunning) return;
+    //Checking Determinism
+    const nonDet = [...DeterminismChecker4DFA(nodeMap, transitionMap)];
+    if (nonDet.length != 0) {
+      setAcceptanceResult(`Please Fix Non-Deterministic States: ${nonDet.join(', ')}`)
+      return;
+    }
+    if (Object.keys(stateOutput).length != Object.keys(nodeMap).length) {
+      setAcceptanceResult(`Some States Are Missing Output Symbols`)
+      return;
+    }
+    ReactDOM.unstable_batchedUpdates(() => {
+      setIsRunning(true);
+      if (isRunningStepWise) setIsRunningStepWise(false);
+      setShowQuestion(false);
+      setSelectedNode(null);
+      setHighlightedTransition([]);
+      setAcceptanceResult(null);
+      setStepIndex(0);
+    })
+    Moore(inputString, transitionMap, nodeMap, setShowQuestion, setIsRunning,
+      setAcceptanceResult, sleep, highlightTransitions, setCurrNode,
+      setStepIndex, getNodeById, stateOutput)
+  }
+  //Prepare Stepwise
+  const handleRunStepMoore = async () => {
+    if (isRunning) return;
+    if (!nodeMap["q0"]) return;
+    if (isRunningStepWise) {
+      if (selectedNode) setSelectedNode(null);
+      if (!isStepCompleted) return;
+      MooreStep(
+        currNode, setCurrNode, inputString, acceptanceResult,
+        transitionMap, stepIndex, setStepIndex, getNodeById, highlightTransitions,
+        setAcceptanceResult, setShowQuestion, setIsRunningStepWise,
+        setIsStepCompleted, sleep, stateOutput)
+    } else {
+      resetStepWise();
+      const nonDet = [...DeterminismChecker4DFA(nodeMap, transitionMap)];
+      if (nonDet.length != 0) {
+        setAcceptanceResult(`Please Fix Non-Deterministic States: ${nonDet.join(', ')}`)
+        return;
+      }
+      if (Object.keys(stateOutput).length != Object.keys(nodeMap).length) {
+        setAcceptanceResult(`Some States Are Missing Output Symbols`)
+        return;
+      }
+      setCurrNode([nodeMap["q0"]]);
+      setAcceptanceResult(`✔ Output: ${stateOutput['q0']}`)
+      setIsRunningStepWise(true);
+    }
+  }
 
   const handleWheel = (e) => {
     e.evt.preventDefault()
@@ -593,6 +700,8 @@ const AutomataSimulator = () => {
         } catch (error) {
           console.error("Error parsing imported data:", error);
           alert("Failed to import data. Invalid file format.");
+        } finally {
+          event.target.value = "";
         }
       };
       reader.readAsText(file);
@@ -606,7 +715,7 @@ const AutomataSimulator = () => {
     setAutomataType(data.automataType || "DFA");
     setInputString(data.inputString || "");
     setStageProps(data.stageProps || { x: 0, y: 0, scale: 1, draggable: true });
-  
+    setStateOutput(data.stateOutput || {})
     setIsRunning(false);
     setIsRunningStepWise(false);
     setCurrEpsilonTrans([]);
@@ -620,7 +729,8 @@ const AutomataSimulator = () => {
       nodeNum,
       automataType,
       inputString,
-      stageProps
+      stageProps,
+      stateOutput
     };
     const json = JSON.stringify(data);
     const blob = new Blob([json], { type: 'application/json' });
@@ -634,7 +744,43 @@ const AutomataSimulator = () => {
     URL.revokeObjectURL(url);
   };
 
-  //RUN STEP BUTTONS
+  //For Ai
+  const GetCurrentAutomata = () => {
+    const transitions = [];
+    Object.entries(transitionMap).forEach(([key, valueArray]) => {
+      valueArray.forEach(item => {
+        transitions.push([item.sourceid, item.label, item.targetid]);
+      });
+    });
+    const positions = Object.values(nodeMap)
+      .map(node => `[${node.x},${node.y}]`)
+      .join(',');
+
+    const data = {
+      nodeMap: Object.keys(nodeMap),
+      positions: positions,
+      transitions,
+      finalNodes: Array.from(finalNodes),
+      nodeNum,
+      automataType,
+      inputString,
+      stageProps
+    };
+    return data;
+  };
+  const setCurrentAutomata = (result) => {
+    const importedData = JSON.parse(result);
+    loadAutomataData(importedData);
+  }
+
+  const getCharacterDetails = (index, char) => {
+    if (automataType === "TM") {
+      return `Tape Position: ${index}\nCurrent Symbol: ${char}\n${index === stepIndex ? "Head Position" : ""}`;
+    } else {
+      return `Position: ${index}\nCharacter: ${char}\n${index === stepIndex ? "Current Input" : "Next Input"}`;
+    }
+  };
+
   function run() {
     switch (automataType) {
       case "DFA": return handleRun
@@ -643,6 +789,7 @@ const AutomataSimulator = () => {
       case "NPDA": return handleRunNPDA
       case "MEALY": return handleRunMEALY
       case "TM": return handleRunTM
+      case "MOORE": return handleRunMoore
       default: console.error("Wrong Automata Type")
     }
   }
@@ -654,9 +801,11 @@ const AutomataSimulator = () => {
       case "NPDA": return handleStepNPDA
       case "MEALY": return handleRunStepMEALY
       case "TM": return handleStepTM
+      case "MOORE": return handleRunStepMoore
       default: console.error("Wrong Automata Type")
     }
   }
+
   return (
     <div style={{
       position: "relative",
@@ -687,9 +836,9 @@ const AutomataSimulator = () => {
           gap: "12px"
         }}>
           <ExampleMenu
-          theme={theme}
-          lightheme={lightTheme}
-          onClick={(file)=>loadAutomataData(file)}
+            theme={theme}
+            lightheme={lightTheme}
+            onClick={(file) => loadAutomataData(file)}
           />
           <h1 style={{
             margin: 0,
@@ -707,7 +856,7 @@ const AutomataSimulator = () => {
             flex: 1
           }}
         />
-        {nodeNum!==0&&<button
+        {nodeNum !== 0 && <button
           onClick={clearAll}
           style={{
             padding: "8px 12px",
@@ -741,10 +890,10 @@ const AutomataSimulator = () => {
             userSelect: 'none',
           }}
         >
-          Load
+          Open
         </button>
         <button
-          onClick={(e)=>handleExportClick(e)}
+          onClick={(e) => handleExportClick(e)}
           style={{
             padding: "8px 12px",
             border: `1px solid ${theme.border}`,
@@ -812,7 +961,6 @@ const AutomataSimulator = () => {
               display: "flex",
               flexDirection: "column",
               flexFlow: 'column-reverse',
-              gap: "6px",
               userSelect: "none",
             }}>
               <span style={{
@@ -821,6 +969,7 @@ const AutomataSimulator = () => {
                 fontWeight: "500",
                 letterSpacing: "0.5px",
                 alignSelf: 'center',
+                marginTop: '5px',
               }}>
                 Stack
               </span>
@@ -835,11 +984,11 @@ const AutomataSimulator = () => {
                     justifyContent: "center",
                     backgroundColor: theme.background,
                     color: theme.black,
-                    border: `${index === stack.length - 1 ? "2px" : "1px"} solid ${theme.black}`,
-                    borderRadius: "6px",
+                    border: `${index === stack.length - 1 ? "3px" : "1px"} solid ${theme.black}`,
                     userSelect: "none",
                     fontSize: "14px",
                     fontWeight: "500",
+                    alignSelf: 'center',
                     boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
                   }}
                 >
@@ -974,6 +1123,8 @@ const AutomataSimulator = () => {
                   nodeMouseUp={nodeMouseUp}
                   questionImage={image}
                   theme={theme}
+                  stateOutput={stateOutput}
+                  showStateOutput={automataType === "MOORE"}
                 />
               ))}
             </Layer>
@@ -988,12 +1139,13 @@ const AutomataSimulator = () => {
           borderLeft: `1px solid ${theme.border}`,
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden"
+          overflow: "hidden",
         }}>
           {/* Automata Type Selector */}
           <div style={{
             padding: "16px",
-            borderBottom: `1px solid ${theme.border}`
+            borderBottom: `1px solid ${theme.border}`,
+            margin: "0 -1px"
           }}>
             <h2 style={{
               margin: "0 0 12px 0",
@@ -1025,19 +1177,21 @@ const AutomataSimulator = () => {
                 transition: "all 0.2s"
               }}
             >
-              <option value="DFA">DFA</option>
-              <option value="NFA">NFA</option>
-              <option value="DPDA">DPDA</option>
-              <option value="NPDA">NPDA</option>
-              <option value="TM">TM</option>
-              <option value="MEALY">MEALY</option>
+              <option value="DFA">Deterministic FA</option>
+              <option value="NFA">Non-Deterministic FA</option>
+              <option value="DPDA">Deterministic PDA</option>
+              <option value="NPDA">Non-Deterministic PDA</option>
+              <option value="TM">Turing Machine</option>
+              <option value="MEALY">Mealy Machine</option>
+              <option value="MOORE">Moore Machine</option>
             </select>
           </div>
 
           {/* State Controls */}
           <div style={{
             padding: "16px",
-            borderBottom: `1px solid ${theme.border}`
+            borderBottom: `1px solid ${theme.border}`,
+            margin: "0 -1px"
           }}>
             <h2 style={{
               margin: "0 0 12px 0",
@@ -1120,11 +1274,60 @@ const AutomataSimulator = () => {
             </div>
           </div>
 
+          {/* Input Output Symbol Moore */}
+          {(automataType === "MOORE" && selectedNode) &&
+            <div style={{
+              padding: "16px",
+              borderBottom: `1px solid ${theme.border}`,
+              margin: "0 -1px"
+            }}>
+              <h2 style={{
+                margin: "0 0 12px 0",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: theme.black,
+                letterSpacing: "0.5px"
+              }}>
+                Enter Output Symbol for {selectedNode.id}
+              </h2>
+              <input
+                inputMode="text"
+                placeholder="Output Symbol"
+                value={stateOutput[selectedNode.id]}
+                maxLength={1}
+                readOnly={isRunning || isRunningStepWise}
+                onChange={(e) => {
+                  if (e.target.value.trim() == "") {
+                    setStateOutput(prev => {
+                      const { [selectedNode.id]: removed, ...rest } = prev;
+                      return rest;
+                    });
+                    return;
+                  }
+                  setStateOutput((prev) => ({
+                    ...prev,
+                    [selectedNode.id]: e.target.value.trim()
+                  }))
+                }}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: "6px",
+                  backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                  color: theme.black,
+                  fontSize: "13px",
+                  transition: "all 0.2s",
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+          }
           {/* Input String */}
           <div style={{
             padding: "16px",
             borderBottom: `1px solid ${theme.border}`,
-            overflow: "hidden"
+            margin: "0 -1px"
           }}>
             <h2 style={{
               margin: "0 0 12px 0",
@@ -1161,7 +1364,8 @@ const AutomataSimulator = () => {
             padding: "16px",
             borderBottom: `1px solid ${theme.border}`,
             display: "flex",
-            gap: "8px"
+            gap: "8px",
+            margin: "0 -1px"
           }}>
             <button
               onClick={run()}
@@ -1202,11 +1406,13 @@ const AutomataSimulator = () => {
           {acceptanceResult && (
             <div style={{
               padding: "16px",
-              borderBottom: `1px solid ${theme.border}`
+              borderBottom: `1px solid ${theme.border}`,
+              margin: "0 -1px"
             }}>
               <h2 style={{
                 margin: "0 0 12px 0",
                 fontSize: "14px",
+
                 fontWeight: "600",
                 color: theme.black,
                 letterSpacing: "0.5px"
@@ -1215,7 +1421,7 @@ const AutomataSimulator = () => {
               </h2>
               <div style={{
                 color: acceptanceResult.toLowerCase().includes("✔") ? "#32CD32" : "#e74c3c",
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "600",
                 padding: "8px 12px",
                 backgroundColor: acceptanceResult.toLowerCase().includes("✔") ? theme.greenTrans : theme.redTrans,
@@ -1225,7 +1431,19 @@ const AutomataSimulator = () => {
               </div>
             </div>
           )}
-         
+
+          {/* AI Assistant 
+            <div style={{
+              flex: 1,
+              borderBottom: `1px solid ${theme.border}`,
+              margin: "0 -1px",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0, // This is crucial for proper flex behavior
+            }}>
+              <AiAssistant theme={theme} lightTheme={lightTheme} getCurrentAutomata={GetCurrentAutomata} setCurrentAutomata={setCurrentAutomata} />
+            </div>
+          */}
         </div>
 
         {/* Bottom Bar with Input String Display */}
@@ -1243,44 +1461,60 @@ const AutomataSimulator = () => {
           padding: "0 16px",
           zIndex: 10
         }}>
-          {/* Input String Characters Display */}
           <div style={{
             display: "flex",
-            gap: "0px"
+            gap: "0px",
+            position: "relative"
           }}>
-            {(automataType === "TM" ? tape : inputString).split('').map((char, index) => (
-              <span
-                key={index}
-                style={{
-                  width: automataType === "TM" ? "28px" : "32px",
-                  height: "32px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: (index === stepIndex) ? theme.red : theme.background,
-                  color: (index === stepIndex) ? "white" : theme.black,
-                  userSelect: "none",
-
-                  borderTopWidth: '1px',
-                  borderBottomWidth: '1px',
-                  borderStyle: 'solid',
-                  borderColor: theme.black,
-                  borderLeftWidth: '1px',
-                  borderRightWidth: index === (automataType === "TM" ? tape : inputString).length - 1 ? '1px' : '0px',
-                  borderTopRightRadius: index === (automataType === "TM" ? tape : inputString).length - 1 ? '6px' : '0px',
-                  borderBottomRightRadius: index === (automataType === "TM" ? tape : inputString).length - 1 ? '6px' : '0px',
-                  borderTopLeftRadius: index === 0 ? '6px' : '0px',
-                  borderBottomLeftRadius: index === 0 ? '6px' : '0px',
-
-                  fontSize: "16px",
-                  fontWeight: "500",
-                  transition: "all 0.2s"
-                }}
-              >
-                {char}
-              </span>
-            ))}
+            {(automataType === "TM" ? tape : inputString).split('').map((char, index) => {
+              const isCurrentStep = index === stepIndex;
+              return (
+                <span
+                  key={index}
+                  ref={isCurrentStep ? currentCharRef : null}
+                  style={{
+                    width: automataType === "TM" ? "28px" : "32px",
+                    height: "32px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: isCurrentStep ? theme.red : theme.background,
+                    color: isCurrentStep ? "white" : theme.black,
+                    userSelect: "none",
+                    borderTopWidth: '1px',
+                    borderBottomWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: theme.black,
+                    borderLeftWidth: '1px',
+                    borderRightWidth: index === (automataType === "TM" ? tape : inputString).length - 1 ? '1px' : '0px',
+                    borderTopRightRadius: index === (automataType === "TM" ? tape : inputString).length - 1 ? '6px' : '0px',
+                    borderBottomRightRadius: index === (automataType === "TM" ? tape : inputString).length - 1 ? '6px' : '0px',
+                    borderTopLeftRadius: index === 0 ? '6px' : '0px',
+                    borderBottomLeftRadius: index === 0 ? '6px' : '0px',
+                    fontSize: "16px",
+                    fontWeight: "500",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {char}
+                </span>
+              );
+            })}
           </div>
+          {(isRunningStepWise&&inputString) && (
+            <CharacterDialog
+              x={dialogPosition.x}
+              y={dialogPosition.y}
+              theme={theme === lightTheme ? 'light' : 'dark'}
+              isRunningStepWise={isRunningStepWise}
+              stepIndex={stepIndex}
+              currentInputSymbol={inputString[stepIndex]}
+              currentStates={currNode}
+              automataType={automataType}
+              tape={tape}
+              stack={stack}
+            />
+          )}
         </div>
       </div>
 
@@ -1305,3 +1539,4 @@ const AutomataSimulator = () => {
 };
 
 export default AutomataSimulator;
+

@@ -27,13 +27,18 @@ export const TMInput = ({onClose,onSubmit,theme}) => {
     const onClickLeft = ()=>{
       setDirection('L')
     }
-
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        handleSubmit();
+      }
+    };
     return(
-        <>
+        <div onKeyDown={handleKeyDown}>
         <input
             type="text"
             value={inputTM}
             spellCheck="false"
+            autoComplete="off"
             name='inputTM'
             placeholder='input'
             maxLength={1}
@@ -55,6 +60,7 @@ export const TMInput = ({onClose,onSubmit,theme}) => {
             type="text"
             value={outputTM}
             spellCheck="false"
+            autoComplete="off"
             name='outputTM'
             placeholder='output'
             maxLength={1}
@@ -140,7 +146,7 @@ export const TMInput = ({onClose,onSubmit,theme}) => {
              Cancel
            </button>
         </div>
-        </>
+        </div>
     )
 }
 

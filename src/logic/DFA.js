@@ -51,7 +51,7 @@ export async function DFA(
 export async function DFAStep(
 inputString,stepIndex,setStepIndex,currNode,setCurrNode,transitionMap
 ,setShowQuestion,setIsRunningStepWise,setAcceptanceResult,highlightTransitions
-,sleep,getNodeById,setIsStepCompleted,finalNodes
+,sleep,getNodeById,setIsStepCompleted,finalNodes,nodeMap
 ){
     const char = inputString[stepIndex];
     let mcurrNode = currNode[0];
