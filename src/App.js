@@ -5,6 +5,10 @@ import ReactDOM from 'react-dom';
 import DrawTransitions from "./draw/DrawTransitions";
 import DrawNodes from "./draw/DrawNodes";
 import DrawGrid from "./draw/DrawGrid";
+import DeleteIcon from "./assets/delete.png";
+import AddIcon from "./assets/add.png";
+import AddIconD from "./assets/add_dark.png";
+import RunIcon from "./assets/play.png";
 import { DPDA, DPDAStep } from "./logic/DPDA"
 import { NPDA, NPDAStep, computeEpsilonClosure } from "./logic/NPDA"
 import { DFA, DFAStep } from './logic/DFA'
@@ -14,10 +18,9 @@ import { Moore, MooreStep } from './logic/Moore'
 import { TM, TMStep } from './logic/TM'
 import { lightTheme, darkTheme } from "./theme";
 import ExampleMenu from "./components/ExampleMenu";
-import AiAssistant from "./components/AiAssistant";
-import CharacterDialog from "./components/CharacterDialog";
 import { DeterminismChecker4DFA, DeterminismChecker4Mealy } from './logic/DeterminismChecker'
-
+import ProblemSelector from './components/ProblemSelector';
+import { QuickValidator } from './logic/QuickValidator';
 
 const AutomataSimulator = () => {
   const [nodeMap, setNodeMap] = useState({});
@@ -63,8 +66,6 @@ const AutomataSimulator = () => {
   const [stackContents, setStackContents] = useState([{ node: 'q0', stack: ['z₀'] }]);
   const [currentStatesNPDA, setCurrentStatesNPDA] = useState([{}]);
   const [tape, setTape] = useState('');
-  const [dialogPosition, setDialogPosition] = useState({ x: 0, y: 0 });
-  const currentCharRef = useRef(null);
 
   //save load
   let fileInputRef = useRef(null);
@@ -75,8 +76,17 @@ const AutomataSimulator = () => {
   //theme
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem("theme");
-    return savedTheme === "light" ? lightTheme : darkTheme;
+    return savedTheme === "dark" ? darkTheme : lightTheme;
   });
+  const [showExercise, setShowExercise] = useState(false);
+  const [selectedProblem, setSelectedProblem] = useState(null);
+  const [showProblemSelector, setShowProblemSelector] = useState(false);
+
+  const [validationResult, setValidationResult] = useState(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const resultsRef = useRef(null);
+
+  const [showHints, setShowHints] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("theme", theme === darkTheme ? "dark" : "light");
@@ -95,14 +105,10 @@ const AutomataSimulator = () => {
   }, [inputString]);
 
   useEffect(() => {
-    if (isRunningStepWise && currentCharRef.current) {
-      const rect = currentCharRef.current.getBoundingClientRect();
-      setDialogPosition({
-        x: rect.left + 20 - rect.width / 2,
-        y: rect.top - 20
-      });
+    if (validationResult && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [stepIndex, isRunningStepWise]);
+  }, [validationResult]);
 
   const highlightTransitions = (transitions, time = 500) => {
     setHighlightedTransition(transitions);
@@ -341,7 +347,6 @@ const AutomataSimulator = () => {
   const handleStepWise = async () => {
     if (selectedNode) setSelectedNode(null);
     if (!isStepCompleted) return;
-    setIsStepCompleted(false);
     DFAStep(
       inputString, stepIndex, setStepIndex, currNode, setCurrNode, transitionMap
       , setShowQuestion, setIsRunningStepWise, setAcceptanceResult, highlightTransitions
@@ -773,14 +778,6 @@ const AutomataSimulator = () => {
     loadAutomataData(importedData);
   }
 
-  const getCharacterDetails = (index, char) => {
-    if (automataType === "TM") {
-      return `Tape Position: ${index}\nCurrent Symbol: ${char}\n${index === stepIndex ? "Head Position" : ""}`;
-    } else {
-      return `Position: ${index}\nCharacter: ${char}\n${index === stepIndex ? "Current Input" : "Next Input"}`;
-    }
-  };
-
   function run() {
     switch (automataType) {
       case "DFA": return handleRun
@@ -806,12 +803,63 @@ const AutomataSimulator = () => {
     }
   }
 
+  const handleSubmit = async () => {
+    if (!selectedProblem) return;
+
+    setIsValidating(true);
+    setValidationResult(null);
+
+    try {
+      let results;
+      switch (automataType) {
+        case "DFA":
+          results = await QuickValidator.validateDFA(nodeMap, transitionMap,
+            selectedProblem.validStrings, selectedProblem.invalidStrings, finalNodes);
+          break;
+        case "NFA":
+          results = await QuickValidator.validateNFA(nodeMap, transitionMap,
+            selectedProblem.validStrings, selectedProblem.invalidStrings, finalNodes);
+          break;
+        case "DPDA":
+          results = await QuickValidator.validateDPDA(nodeMap, transitionMap,
+            selectedProblem.validStrings, selectedProblem.invalidStrings, finalNodes);
+          break;
+        case "NPDA":
+          results = await QuickValidator.validateNPDA(nodeMap, transitionMap,
+            selectedProblem.validStrings, selectedProblem.invalidStrings, finalNodes);
+          break;
+        case "TM":
+          results = await QuickValidator.validateTM(nodeMap, transitionMap,
+            selectedProblem.validStrings, selectedProblem.invalidStrings, finalNodes);
+          break;
+        case "MEALY":
+          results = await QuickValidator.validateMealy(nodeMap, transitionMap,
+            selectedProblem.validStrings, selectedProblem.invalidStrings);
+          break;
+        case "MOORE":
+          results = await QuickValidator.validateMoore(nodeMap, transitionMap,
+            selectedProblem.validStrings, selectedProblem.invalidStrings, stateOutput);
+          break;
+        default:
+          throw new Error("Invalid automata type");
+      }
+
+      setValidationResult(results);
+    } catch (error) {
+      setValidationResult({
+        errors: [`Error during validation: ${error.message}`]
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   return (
     <div style={{
       position: "relative",
       height: "100vh",
       overflow: "hidden",
-      backgroundColor: theme === lightTheme ? "#f5f5f5" : "#1a1a1a"
+      backgroundColor: theme === lightTheme ? "#f5f5f5" : "#1a1a1a",
     }}>
       {/* Top Navigation Bar */}
       <div style={{
@@ -826,8 +874,7 @@ const AutomataSimulator = () => {
         alignItems: "center",
         padding: "0 24px",
         gap: "15px",
-        zIndex: 100,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+        zIndex: 1
       }}>
         {/* Logo */}
         <div style={{
@@ -840,7 +887,7 @@ const AutomataSimulator = () => {
             lightheme={lightTheme}
             onClick={(file) => loadAutomataData(file)}
           />
-          <h1 style={{
+          <strong style={{
             margin: 0,
             fontSize: "20px",
             fontWeight: "600",
@@ -848,7 +895,7 @@ const AutomataSimulator = () => {
             color: theme.black,
           }}>
             Automata Simulator
-          </h1>
+          </strong>
         </div>
         {/* File Operations */}
         <div
@@ -943,6 +990,396 @@ const AutomataSimulator = () => {
         display: "flex",
         overflow: "hidden"
       }}>
+        {/* Left Panel - Exercise */}
+        <div style={{
+          position: "fixed",
+          left: showExercise ? "0" : "-320px",
+          top: "56px",
+          bottom: "0px",
+          width: "320px",
+          backgroundColor: theme === lightTheme ? "white" : "#242424",
+          borderRight: `1px solid ${theme.border}`,
+          transition: "all 0.3s ease",
+          display: "flex",
+          flexDirection: "column",
+          zIndex: 20
+        }}>
+          <div style={{
+            padding: "16px",
+            borderBottom: `1px solid ${theme.border}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center"
+          }}>
+            <h2 style={{
+              margin: 0,
+              fontSize: "16px",
+              fontWeight: "600",
+              color: theme.black
+            }}>
+              Exercise
+            </h2>
+            <button
+              onClick={() => setShowProblemSelector(true)}
+              style={{
+                padding: "6px 12px",
+                border: `1px solid ${theme.border}`,
+                borderRadius: "6px",
+                backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                color: theme.black,
+                cursor: "pointer",
+                fontSize: "13px",
+                transition: "all 0.2s",
+                ":hover": {
+                  backgroundColor: theme === lightTheme ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)"
+                }
+              }}
+            >
+              Choose Problem
+            </button>
+          </div>
+
+          {/* Exercise Toggle Button */}
+          <button
+            onClick={() => setShowExercise(!showExercise)}
+            style={{
+              position: "fixed",
+              left: showExercise ? "320px" : "0",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: showExercise ? "24px" : "80px",
+              height: "48px",
+              backgroundColor: theme === lightTheme ? "white" : "#242424",
+              border: `1px solid ${theme.border}`,
+              borderRadius: "0 4px 4px 0",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              zIndex: 10,
+              transition: "all 0.3s ease",
+              padding: showExercise ? "0" : "0 8px",
+              overflow: "hidden"
+            }}
+          >
+            {!showExercise && (
+              <span style={{
+                color: theme.black,
+                fontSize: "12px",
+                fontWeight: "500",
+                whiteSpace: "nowrap"
+              }}>
+                Exercise
+              </span>
+            )}
+            <span style={{
+              color: theme.black,
+              fontSize: "16px",
+              transform: `rotate(${showExercise ? "180deg" : "0deg"})`,
+              transition: "all 0.2s"
+            }}>
+              ▶
+            </span>
+          </button>
+
+          {/* Exercise Content with Results */}
+          <div style={{
+            flex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: "16px",
+            gap: "16px",
+            display: "flex",
+            flexDirection: "column",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            '&::WebkitScrollbar': {
+              display: "none"
+            }
+          }}>
+            {selectedProblem ? (
+              <>
+                {/* Problem Statement */}
+                <div style={{
+                  backgroundColor: theme === lightTheme ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
+                  padding: "16px",
+                  borderRadius: "8px",
+                  border: `1px solid ${theme.border}`
+                }}>
+                  <h3 style={{
+                    margin: "0 0 12px 0",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: theme.black,
+                    letterSpacing: "0.5px"
+                  }}>
+                    Problem Statement
+                  </h3>
+                  <p style={{
+                    margin: 0,
+                    fontSize: "13px",
+                    lineHeight: "1.5",
+                    color: theme.black
+                  }}>
+                    {selectedProblem.statement}
+                  </p>
+                </div>
+
+                {/* Valid and Invalid Strings Table */}
+                <div style={{
+                  backgroundColor: theme === lightTheme ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
+                  padding: "16px",
+                  borderRadius: "8px",
+                  border: `1px solid ${theme.border}`
+                }}>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "16px"
+                  }}>
+                    {/* Valid Strings Column */}
+                    <div>
+                      <h4 style={{
+                        margin: "0 0 8px 0",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        color: theme.black,
+                        letterSpacing: "0.5px"
+                      }}>
+                        Valid Strings
+                      </h4>
+                      <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: "4px",
+                        overflow: "hidden"
+                      }}>
+                        {selectedProblem.validStrings.map((str, index) => (
+                          <div key={index} style={{
+                            padding: "8px 12px",
+                            backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                            color: theme.black,
+                            fontSize: "13px",
+                            borderBottom: index !== selectedProblem.validStrings.length - 1 ? `1px solid ${theme.border}` : "none"
+                          }}>
+                            {str}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Invalid Strings Column */}
+                    <div>
+                      <h4 style={{
+                        margin: "0 0 8px 0",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        color: theme.black,
+                        letterSpacing: "0.5px"
+                      }}>
+                        Invalid Strings
+                      </h4>
+                      <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: "4px",
+                        overflow: "hidden"
+                      }}>
+                        {selectedProblem.invalidStrings.map((str, index) => (
+                          <div key={index} style={{
+                            padding: "8px 12px",
+                            backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                            color: theme.black,
+                            fontSize: "13px",
+                            borderBottom: index !== selectedProblem.invalidStrings.length - 1 ? `1px solid ${theme.border}` : "none"
+                          }}>
+                            {str}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hints */}
+                <div style={{
+                  backgroundColor: theme === lightTheme ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
+                  padding: "16px",
+                  borderRadius: "8px",
+                  border: `1px solid ${theme.border}`
+                }}>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: showHints ? "12px" : "0"
+                  }}>
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: theme.black,
+                      letterSpacing: "0.5px"
+                    }}>
+                      Hints
+                    </h3>
+                    <button
+                      onClick={() => setShowHints(!showHints)}
+                      style={{
+                        padding: "4px 8px",
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: "6px",
+                        backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                        color: theme.black,
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        transition: "all 0.2s",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      <span style={{
+                        transform: `rotate(${showHints ? "180deg" : "0deg"})`,
+                        transition: "transform 0.2s",
+                        fontSize: "16px"
+                      }}>
+                        ▼
+                      </span>
+                    </button>
+                  </div>
+                  {showHints && (
+                    <ul style={{
+                      margin: 0,
+                      paddingLeft: "20px",
+                      color: theme.black,
+                      fontSize: "13px",
+                      lineHeight: "1.5"
+                    }}>
+                      {selectedProblem.hints.map((hint, index) => (
+                        <li key={index}>{hint}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Validation Results */}
+                {validationResult && (
+                  <div
+                    ref={resultsRef}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "6px",
+                      backgroundColor: validationResult.errors.length === 0
+                        ? (theme === lightTheme ? "rgba(46, 204, 113, 0.1)" : "rgba(46, 204, 113, 0.1)")
+                        : (theme === lightTheme ? "rgba(231, 76, 60, 0.1)" : "rgba(231, 76, 60, 0.1)"),
+                      border: `1px solid ${validationResult.errors.length === 0 ? theme.green : theme.red}`
+                    }}
+                  >
+                    {validationResult.errors.length === 0 ? (
+                      <div style={{ color: theme.green, fontSize: "14px", fontWeight: "500" }}>
+                        ✔ All test cases passed successfully!
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{
+                          color: theme.red,
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          marginBottom: "8px"
+                        }}>
+                          ✘ Validation failed
+                        </div>
+                        <div style={{
+                          color: theme.black,
+                          fontSize: "13px",
+                          lineHeight: "1.5"
+                        }}>
+                          {validationResult.errors.map((error, index) => (
+                            <div key={index} style={{ marginBottom: "4px" }}>
+                              {error}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                color: theme.black,
+                fontSize: "14px",
+                textAlign: "center"
+              }}>
+                Click "Choose Problem" to select an exercise
+              </div>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          {selectedProblem && (
+            <div style={{
+              padding: "16px",
+              borderTop: `1px solid ${theme.border}`,
+              backgroundColor: theme === lightTheme ? "white" : "#242424"
+            }}>
+              <button
+                onClick={handleSubmit}
+                disabled={isValidating}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  backgroundColor: "transparent",
+                  color: theme.green,
+                  border: `1px solid ${theme.green}`,
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  fontWeight: '600',
+                  letterSpacing: '0.5px',
+                  cursor: isValidating ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  opacity: isValidating ? 0.7 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!isValidating) {
+                    e.target.style.backgroundColor = theme.green;
+                    e.target.style.color = "white";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isValidating) {
+                    e.target.style.backgroundColor = "transparent";
+                    e.target.style.color = theme.green;
+                  }
+                }}
+              >
+                {isValidating ? "Validating..." : "Submit"}
+              </button>
+            </div>
+          )}
+
+          {/* Problem Selector Modal */}
+          <ProblemSelector
+            isOpen={showProblemSelector}
+            onClose={() => setShowProblemSelector(false)}
+            onSelect={(problem) => {
+              setSelectedProblem(problem);
+              setShowProblemSelector(false);
+              setValidationResult(null);
+            }}
+            theme={theme}
+            style={{ zIndex: 1000 }}
+          />
+        </div>
+
         {/* Main Canvas Area */}
         <div style={{
           flex: 1,
@@ -1141,141 +1578,19 @@ const AutomataSimulator = () => {
           flexDirection: "column",
           overflow: "hidden",
         }}>
-          {/* Automata Type Selector */}
+          {/* Controls Content */}
           <div style={{
-            padding: "16px",
-            borderBottom: `1px solid ${theme.border}`,
-            margin: "0 -1px"
+            flex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            paddingRight: "4px",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            '&::WebkitScrollbar': {
+              display: "none"
+            }
           }}>
-            <h2 style={{
-              margin: "0 0 12px 0",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: theme.black,
-              letterSpacing: "0.5px"
-            }}>
-              Automata Type
-            </h2>
-            <select
-              value={automataType}
-              onChange={(e) => {
-                setAutomataType(e.target.value);
-                setIsRunning(false);
-                setIsRunningStepWise(false);
-                setCurrEpsilonTrans([]);
-                resetStepWise();
-              }}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: `1px solid ${theme.border}`,
-                borderRadius: "6px",
-                backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
-                color: theme.black,
-                fontSize: "13px",
-                cursor: "pointer",
-                transition: "all 0.2s"
-              }}
-            >
-              <option value="DFA">Deterministic FA</option>
-              <option value="NFA">Non-Deterministic FA</option>
-              <option value="DPDA">Deterministic PDA</option>
-              <option value="NPDA">Non-Deterministic PDA</option>
-              <option value="TM">Turing Machine</option>
-              <option value="MEALY">Mealy Machine</option>
-              <option value="MOORE">Moore Machine</option>
-            </select>
-          </div>
-
-          {/* State Controls */}
-          <div style={{
-            padding: "16px",
-            borderBottom: `1px solid ${theme.border}`,
-            margin: "0 -1px"
-          }}>
-            <h2 style={{
-              margin: "0 0 12px 0",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: theme.black,
-              letterSpacing: "0.5px"
-            }}>
-              State Controls
-            </h2>
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px"
-            }}>
-              <button
-                onClick={handleAddNode}
-                style={{
-                  padding: "8px 12px",
-                  border: "none",
-                  borderRadius: "6px",
-                  backgroundColor: theme.blue,
-                  color: "white",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  transition: "all 0.2s"
-                }}
-              >
-                Add New State
-              </button>
-
-              {selectedNode && (
-                <div style={{
-                  display: "flex",
-                  gap: "8px"
-                }}>
-                  <button
-                    onClick={handleSetFinal}
-                    style={{
-                      flex: 1,
-                      padding: "8px 12px",
-                      border: "none",
-                      borderRadius: "6px",
-                      backgroundColor: theme === lightTheme ? "#2c3e50" : "#34495e",
-                      color: "white",
-                      cursor: "pointer",
-                      fontSize: "13px",
-                      fontWeight: "500",
-                      transition: "all 0.2s"
-                    }}
-                  >
-                    Toggle Final State
-                  </button>
-                  {selectedNode.id !== "q0" && (
-                    <button
-                      onClick={deleteNode}
-                      style={{
-                        padding: "4px",
-                        width: 40,
-                        border: "none",
-                        borderRadius: "6px",
-                        backgroundColor: "#e74c3c",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.2s"
-                      }}
-                    >
-                      <img
-                        width={25}
-                        alt="del"
-                        src={require("./assets/delete.png")}
-                      />
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Input Output Symbol Moore */}
-          {(automataType === "MOORE" && selectedNode) &&
+            {/* Automata Type Selector */}
             <div style={{
               padding: "16px",
               borderBottom: `1px solid ${theme.border}`,
@@ -1288,27 +1603,204 @@ const AutomataSimulator = () => {
                 color: theme.black,
                 letterSpacing: "0.5px"
               }}>
-                Enter Output Symbol for {selectedNode.id}
+                Automata Type
+              </h2>
+              <select
+                value={automataType}
+                onChange={(e) => {
+                  setAutomataType(e.target.value);
+                  setIsRunning(false);
+                  setIsRunningStepWise(false);
+                  setCurrEpsilonTrans([]);
+                  resetStepWise();
+                }}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: "6px",
+                  backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                  color: theme.black,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+              >
+                <option value="DFA">Deterministic FA</option>
+                <option value="NFA">Non-Deterministic FA</option>
+                <option value="DPDA">Deterministic PDA</option>
+                <option value="NPDA">Non-Deterministic PDA</option>
+                <option value="TM">Turing Machine</option>
+                <option value="MEALY">Mealy Machine</option>
+                <option value="MOORE">Moore Machine</option>
+              </select>
+            </div>
+
+            {/* State Controls */}
+            <div style={{
+              padding: "16px",
+              borderBottom: `1px solid ${theme.border}`,
+              margin: "0 -1px"
+            }}>
+              <h2 style={{
+                margin: "0 0 12px 0",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: theme.black,
+                letterSpacing: "0.5px"
+              }}>
+                State Controls
+              </h2>
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+              }}>
+                <button
+                  onClick={handleAddNode}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    borderStyle: 'solid',
+                    borderWidth: "1px",
+                    borderColor: theme.border,
+                    backgroundColor: theme === lightTheme ? "white" : "#242424",
+                    color: "white",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    transition: "all 0.2s",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                  }}
+                >
+                  <img src={theme == lightTheme ? AddIconD : AddIcon} style={{ width: '14px', height: '14px' }} />
+                  <span style={{ color: theme.black }}>Add New State</span>
+                </button>
+
+                {selectedNode && (
+                  <div style={{
+                    display: "flex",
+                    gap: "8px"
+                  }}>
+                    <button
+                      onClick={handleSetFinal}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        border: "none",
+                        borderRadius: "6px",
+                        backgroundColor: theme === lightTheme ? "#2c3e50" : "#34495e",
+                        color: "white",
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      Toggle Final State
+                    </button>
+                    {selectedNode.id !== "q0" && (
+                      <button
+                        onClick={deleteNode}
+                        style={{
+                          padding: "4px",
+                          width: 40,
+                          border: "none",
+                          borderRadius: "6px",
+                          backgroundColor: "#e74c3c",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        <img
+                          width={25}
+                          alt="del"
+                          src={DeleteIcon}
+                        />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Input Output Symbol Moore */}
+            {(automataType === "MOORE" && selectedNode) &&
+              <div style={{
+                padding: "16px",
+                borderBottom: `1px solid ${theme.border}`,
+                margin: "0 -1px"
+              }}>
+                <h2 style={{
+                  margin: "0 0 12px 0",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: theme.black,
+                  letterSpacing: "0.5px"
+                }}>
+                  Enter Output Symbol for {selectedNode.id}
+                </h2>
+                <input
+                  inputMode="text"
+                  placeholder="Output Symbol"
+                  value={stateOutput[selectedNode.id]}
+                  maxLength={1}
+                  readOnly={isRunning || isRunningStepWise}
+                  onChange={(e) => {
+                    if (e.target.value.trim() == "") {
+                      setStateOutput(prev => {
+                        const { [selectedNode.id]: removed, ...rest } = prev;
+                        return rest;
+                      });
+                      return;
+                    }
+                    setStateOutput((prev) => ({
+                      ...prev,
+                      [selectedNode.id]: e.target.value.trim()
+                    }))
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: "6px",
+                    backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
+                    color: theme.black,
+                    fontSize: "13px",
+                    transition: "all 0.2s",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+            }
+            {/* Input String */}
+            <div style={{
+              padding: "16px",
+              borderBottom: `1px solid ${theme.border}`,
+              margin: "0 -1px"
+            }}>
+              <h2 style={{
+                margin: "0 0 12px 0",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: theme.black,
+                letterSpacing: "0.5px"
+              }}>
+                Input String
               </h2>
               <input
                 inputMode="text"
-                placeholder="Output Symbol"
-                value={stateOutput[selectedNode.id]}
-                maxLength={1}
+                placeholder="Enter string to test"
+                value={inputString}
+                maxLength={26}
                 readOnly={isRunning || isRunningStepWise}
-                onChange={(e) => {
-                  if (e.target.value.trim() == "") {
-                    setStateOutput(prev => {
-                      const { [selectedNode.id]: removed, ...rest } = prev;
-                      return rest;
-                    });
-                    return;
-                  }
-                  setStateOutput((prev) => ({
-                    ...prev,
-                    [selectedNode.id]: e.target.value.trim()
-                  }))
-                }}
+                onChange={(e) => setInputString(e.target.value.trim())}
                 style={{
                   width: "100%",
                   padding: "8px 12px",
@@ -1322,135 +1814,112 @@ const AutomataSimulator = () => {
                 }}
               />
             </div>
-          }
-          {/* Input String */}
-          <div style={{
-            padding: "16px",
-            borderBottom: `1px solid ${theme.border}`,
-            margin: "0 -1px"
-          }}>
-            <h2 style={{
-              margin: "0 0 12px 0",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: theme.black,
-              letterSpacing: "0.5px"
-            }}>
-              Input String
-            </h2>
-            <input
-              inputMode="text"
-              placeholder="Enter string to test"
-              value={inputString}
-              maxLength={26}
-              readOnly={isRunning || isRunningStepWise}
-              onChange={(e) => setInputString(e.target.value.trim())}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: `1px solid ${theme.border}`,
-                borderRadius: "6px",
-                backgroundColor: theme === lightTheme ? "white" : "#2a2a2a",
-                color: theme.black,
-                fontSize: "13px",
-                transition: "all 0.2s",
-                boxSizing: "border-box"
-              }}
-            />
-          </div>
 
-          {/* Action Buttons */}
-          <div style={{
-            padding: "16px",
-            borderBottom: `1px solid ${theme.border}`,
-            display: "flex",
-            gap: "8px",
-            margin: "0 -1px"
-          }}>
-            <button
-              onClick={run()}
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                border: "none",
-                borderRadius: "6px",
-                backgroundColor: theme.green,
-                color: "white",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: "500",
-                transition: "all 0.2s"
-              }}
-            >
-              Run
-            </button>
-            <button
-              onClick={step()}
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                border: "none",
-                borderRadius: "6px",
-                backgroundColor: theme.blue,
-                color: "white",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: "500",
-                transition: "all 0.2s"
-              }}
-            >
-              Step
-            </button>
-          </div>
-          {/* Acceptance Result */}
-          {acceptanceResult && (
+            {/* Action Buttons */}
             <div style={{
               padding: "16px",
               borderBottom: `1px solid ${theme.border}`,
+              display: "flex",
+              gap: "8px",
               margin: "0 -1px"
             }}>
-              <h2 style={{
-                margin: "0 0 12px 0",
-                fontSize: "14px",
+              <button
+                onClick={run()}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: "6px",
+                  backgroundColor: theme.green,
+                  color: "white",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "500",
+                  transition: "all 0.2s",
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+              >
+                <img src={RunIcon} style={{ width: '14px', height: '14px' }} />
+                <span style={{ color: "white" }}>Run</span>
 
-                fontWeight: "600",
-                color: theme.black,
-                letterSpacing: "0.5px"
-              }}>
-                Result
-              </h2>
+              </button>
+              <button
+                onClick={step()}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  border: "none",
+                  borderRadius: "6px",
+                  backgroundColor: theme.blue,
+                  color: "white",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: "500",
+                  transition: "all 0.2s",
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: "5px",
+                }}
+              >
+                <img src={RunIcon} style={{ width: '14px', height: '14px', marginRight: '-12px' }} />
+                <img src={RunIcon} style={{ width: '14px', height: '14px' }} />
+                Step
+              </button>
+            </div>
+            {/* Acceptance Result */}
+            {acceptanceResult && (
               <div style={{
-                color: acceptanceResult.toLowerCase().includes("✔") ? "#32CD32" : "#e74c3c",
-                fontSize: "15px",
-                fontWeight: "600",
-                padding: "8px 12px",
-                backgroundColor: acceptanceResult.toLowerCase().includes("✔") ? theme.greenTrans : theme.redTrans,
-                borderRadius: "6px"
+                padding: "16px",
+                borderBottom: `1px solid ${theme.border}`,
+                margin: "0 -1px"
               }}>
-                {acceptanceResult}
+                <h2 style={{
+                  margin: "0 0 12px 0",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: theme.black,
+                  letterSpacing: "0.5px"
+                }}>
+                  Result
+                </h2>
+                <div style={{
+                  color: acceptanceResult.toLowerCase().includes("✔") ? "#32CD32" : "#e74c3c",
+                  fontSize: "15px",
+                  fontWeight: "600",
+                  padding: "8px 12px",
+                  backgroundColor: acceptanceResult.toLowerCase().includes("✔") ? theme.greenTrans : theme.redTrans,
+                  borderRadius: "6px"
+                }}>
+                  {acceptanceResult}
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* AI Assistant 
-            <div style={{
-              flex: 1,
-              borderBottom: `1px solid ${theme.border}`,
-              margin: "0 -1px",
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0, // This is crucial for proper flex behavior
-            }}>
-              <AiAssistant theme={theme} lightTheme={lightTheme} getCurrentAutomata={GetCurrentAutomata} setCurrentAutomata={setCurrentAutomata} />
-            </div>
-          */}
+            )}
+            {/*Step Wise Details*/}
+            {isRunningStepWise && (
+              <div
+                style={{
+                  padding: 15,
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                <span style={{ fontWeight: '600', fontSize: '16px', marginBottom: '8px', color: theme.black }}>Position: {automataType === "TM" ? stepIndex - 1 : stepIndex + 1}</span>
+                <span style={{ marginBottom: '4px', color: theme.black, fontSize: '15px' }} >Current Input Symbol: {automataType === "TM" ? tape[stepIndex] : inputString[stepIndex]}</span>
+                <span style={{ color: theme.black, fontSize: '15px' }}>Active States: {currNode.map(n => n.id).join(", ")}</span>
+              </div>
+            )
+            }
+          </div>
         </div>
 
         {/* Bottom Bar with Input String Display */}
         <div style={{
           position: "absolute",
           bottom: 0,
-          left: 0,
+          left: showExercise ? "320px" : "0",
           right: "280px",
           height: "50px",
           backgroundColor: theme === lightTheme ? "white" : "#242424",
@@ -1459,7 +1928,8 @@ const AutomataSimulator = () => {
           alignItems: "center",
           justifyContent: "center",
           padding: "0 16px",
-          zIndex: 10
+          zIndex: 1,
+          transition: "left 0.3s ease"
         }}>
           <div style={{
             display: "flex",
@@ -1471,7 +1941,6 @@ const AutomataSimulator = () => {
               return (
                 <span
                   key={index}
-                  ref={isCurrentStep ? currentCharRef : null}
                   style={{
                     width: automataType === "TM" ? "28px" : "32px",
                     height: "32px",
@@ -1501,20 +1970,6 @@ const AutomataSimulator = () => {
               );
             })}
           </div>
-          {(isRunningStepWise&&inputString) && (
-            <CharacterDialog
-              x={dialogPosition.x}
-              y={dialogPosition.y}
-              theme={theme === lightTheme ? 'light' : 'dark'}
-              isRunningStepWise={isRunningStepWise}
-              stepIndex={stepIndex}
-              currentInputSymbol={inputString[stepIndex]}
-              currentStates={currNode}
-              automataType={automataType}
-              tape={tape}
-              stack={stack}
-            />
-          )}
         </div>
       </div>
 
@@ -1539,4 +1994,3 @@ const AutomataSimulator = () => {
 };
 
 export default AutomataSimulator;
-

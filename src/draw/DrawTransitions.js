@@ -11,8 +11,10 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
         const startY = sourceY + radius * Math.sin(angle);
         const endX = targetX - radius * Math.cos(angle);
         const endY = targetY - radius * Math.sin(angle);
+        const endXLine = targetX - (radius+10) * Math.cos(angle);
+        const endYLine = targetY - (radius+10) * Math.sin(angle);
 
-        return { startX, startY, endX, endY };
+        return { startX, startY, endX, endY,endXLine,endYLine };
     };
 
     const [ishovering, setIsHovering] = useState(false)
@@ -33,7 +35,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                 const newProgress = Math.min(elapsed / duration, 1)
                 setProgress(newProgress)
 
-                if (newProgress < 1) {
+                if (newProgress < 5) {
                     requestAnimationFrame(animate)
                 } else {
                     setIsAnimating(false)
@@ -68,7 +70,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
     
                         // Move to the start of the arc without drawing a line
                         const startAngle = Math.PI / 1.37;
-                        const endAngle = startAngle + (2.15 * Math.PI * 2.15) / 3; // 2/3 of a circle
+                        const endAngle = startAngle + (2.15 * Math.PI * 2) / 3; // 2/3 of a circle
     
                         // Calculate current angle based on progress
                         const currentAngle = startAngle + (endAngle - startAngle) * progress;
@@ -85,7 +87,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                             context.beginPath();
                             context.arc(loopX, loopY, radius, startAngle, currentAngle);
                             context.strokeStyle = theme.red;
-                            context.lineWidth = 2;
+                            context.lineWidth = 3;
                             context.stroke();
                         } else {
                             context.beginPath();
@@ -164,6 +166,8 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
         const angleToTarget = Math.atan2(targetY - controlY, targetX - controlX);
         const endX = targetX - (nodeRadius - 1) * Math.cos(angleToTarget);
         const endY = targetY - (nodeRadius - 1) * Math.sin(angleToTarget);
+        const endXLine = targetX - (nodeRadius + 10) * Math.cos(angleToTarget);
+        const endYLine = targetY - (nodeRadius + 10) * Math.sin(angleToTarget);
         const angleToSource = Math.atan2(sourceY - controlY, sourceX - controlX);
         const startX = sourceX - (nodeRadius - 1) * Math.cos(angleToSource);
         const startY = sourceY - (nodeRadius - 1) * Math.sin(angleToSource);
@@ -172,6 +176,8 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
             startY,
             endX,
             endY,
+            endXLine,
+            endYLine,
             controlX,
             controlY,
         };
@@ -232,12 +238,12 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
     const isHighlighted = highlightedTransition ? highlightedTransition.includes(transition) : false;
     const isEpsilon = epsilonTrans ? epsilonTrans.includes(transition) ? !isHighlighted ? true : false : false : false;
 
-    let startX, startY, endX, endY, controlX, controlY;
+    let startX, startY, endX, endY, controlX, controlY,endXLine,endYLine;
 
     if (edge.source.id === edge.target.id) {
         return drawSelfLoop(edge.source.x, edge.source.y, edge.label, isHighlighted);
     } else {
-        ({ startX, startY, endX, endY, controlX, controlY } = isReverse ? calculateCurvedArrowPoints(
+        ({ startX, startY, endX, endY, endXLine, endYLine,controlX, controlY } = isReverse ? calculateCurvedArrowPoints(
             edge.source.x,
             edge.source.y,
             edge.target.x,
@@ -290,9 +296,9 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                                     // Draw the curved line
                                     context.beginPath();
                                     context.moveTo(startX, startY);
-                                    context.quadraticCurveTo(controlX, controlY, endX, endY);
+                                    context.quadraticCurveTo(controlX, controlY, endXLine, endYLine);
                                     context.strokeStyle = gradient;
-                                    context.lineWidth = 2;
+                                    context.lineWidth = isHighlighted? 3:2;
                                     context.stroke();
                                     context.strokeShape(shape);
                                 }}
@@ -301,7 +307,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                             <Shape
                                 sceneFunc={(context, shape) => {
                                     context.beginPath();
-                                    const arrowSize = 15;
+                                    const arrowSize = isHighlighted?16:15;
                                     const angleToCenter = Math.atan2(edge.target.y - endY, edge.target.x - endX);
                                     context.moveTo(endX, endY);
                                     context.lineTo(
@@ -338,18 +344,20 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                                     gradient.addColorStop(1, ishovering ? theme.lightgrey : isEpsilon ? theme.blue : theme.black);
                                 }
 
+       
                                 // Draw the line with consistent width
                                 context.beginPath();
                                 context.moveTo(startX, startY);
-                                context.lineTo(endX, endY);
+                                context.lineTo(endXLine, endYLine);
                                 context.strokeStyle = gradient;
-                                context.lineWidth = 2;
+                                context.lineWidth = isHighlighted? 3:2;
                                 context.stroke();
                                 context.strokeShape(shape);
 
                                 // Draw the arrow head
+                                //angle to center
                                 const angle = Math.atan2(endY - startY, endX - startX);
-                                const arrowSize = 15;
+                                const arrowSize = isHighlighted?16:15;
                                 context.beginPath();
                                 context.moveTo(endX, endY);
                                 context.lineTo(
