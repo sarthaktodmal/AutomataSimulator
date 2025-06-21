@@ -44,7 +44,7 @@ const ProblemSelector = ({ isOpen, onClose, onSelect, theme }) => {
                     "Remember that the patterns can appear anywhere in the string"
                 ]
             }
-        ],/*
+        ],
         DPDA: [
             {
                 id: "dpda1",
@@ -58,7 +58,7 @@ const ProblemSelector = ({ isOpen, onClose, onSelect, theme }) => {
                     "The stack should be empty at the end of a valid string"
                 ]
             }
-        ],
+        ],/*
         NPDA: [
             {
                 id: "npda1",

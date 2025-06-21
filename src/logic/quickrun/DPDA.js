@@ -18,16 +18,21 @@ export class QuickDPDA {
         let inputIndex = 0;
 
         while (inputIndex < input.length) {
-            const currentSymbol = input[inputIndex];
-            const topOfStack = stack[stack.length - 1];
             const transitions = this.transitionMap[currentState.id] || [];
 
             const validTransition = transitions.find(t => {
-                const { input, pop } = this.parseTransition(t);
-                return input === currentSymbol && pop === topOfStack;
+                let found = false
+                t.label.split(" | ").forEach(operation => {
+                    const [leftSide, ] = operation.split('/');
+                    const [inputSymbol, stackTop] = leftSide.split(',');
+                    if (inputSymbol === char && stackTop === stack[stack.length - 1]) {
+                        found = true
+                    }
+                });
+                return found;
             });
 
-            if (!validTransition) return false;
+            if (!validTransition || validTransition.length==0) return false;
 
             const { push } = this.parseTransition(validTransition);
             stack.pop();

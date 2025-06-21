@@ -4,22 +4,18 @@
 
 Automata Simulator is an interactive tool for designing and testing FA. Users can create states, define transitions, set final states, and validate input strings to see if they are accepted by the automaton.
 
+## Demo
+<img src="demo.gif"/>
+
 ## Features
 
-- Supports DFA, NFA, PDA, Turing & Mealy M
+- Supports DFA, NFA, PDA, Turing, Mealy, Moore Machine
 - Create and position states (nodes) dynamically.
 - Define transitions by clicking on states and specifying symbols.
 - Set states as final states.
 - Run a string through the simulator and check if it is accepted.
 - Step-by-step execution visualization.
 - Save and load automata configurations.
-
-## Future Enhancements
-
-- Support for Moore M.
-- Transition Table
-- Improved UI and additional customization options.
-- Organized Code
 
 ## Deployment
 
@@ -39,4 +35,4 @@ The Automata Simulator is hosted on GitHub Pages. You can visit the simulator at
 
 ## License
 
-This project is under development and currently does not have an open-source license. Copying or reusing the code is restricted.
+This project does not have an open-source license. Copying or reusing the code is restricted.
