@@ -9,7 +9,7 @@ const ProblemSelector = ({ isOpen, onClose, onSelect, theme }) => {
             {
                 id: "dfa1",
                 title: "Even 0's and Odd 1's",
-                statement: "Design a DFA that accepts all strings over {0,1} that contain an even number of 0's and an odd number of 1's.",
+                statement: "Design a DFA that accepts all strings over {0,1} that contain same number of 0's and 1's.",
                 validStrings: ["01", "0011", "1001", "1100"],
                 invalidStrings: ["00", "11", "010", "101"],
                 hints: [

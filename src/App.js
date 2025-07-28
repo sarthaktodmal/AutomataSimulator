@@ -298,7 +298,7 @@ const AutomataSimulator = () => {
       });
     }
   };
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, 300));
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, 550));
   const getNodeById = (id) => nodeMap[id];
 
   //RUN DFA

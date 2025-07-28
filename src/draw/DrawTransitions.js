@@ -26,21 +26,24 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
         if (highlightedTransition && highlightedTransition.includes(transition)) {
             setIsAnimating(true)
             setProgress(0)
-            const duration = 200
+            const duration = 800
             const startTime = Date.now()
 
             const animate = () => {
-                const currentTime = Date.now()
-                const elapsed = currentTime - startTime
-                const newProgress = Math.min(elapsed / duration, 1)
-                setProgress(newProgress)
-
-                if (newProgress < 5) {
-                    requestAnimationFrame(animate)
+                const currentTime = Date.now();
+                const elapsed = currentTime - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                
+                const easedProgress = 1 - Math.pow(1 - t, 4);
+            
+                setProgress(easedProgress);
+                console.log(progress)
+                if (t < 1) {
+                    requestAnimationFrame(animate);
                 } else {
-                    setIsAnimating(false)
+                    setIsAnimating(false);
                 }
-            }
+            };
 
             requestAnimationFrame(animate)
         }
@@ -285,7 +288,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                                         const gradientLength = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
                                         const gradientOffset = progress * gradientLength;
                                         gradient.addColorStop(0, theme.red);
-                                        gradient.addColorStop(Math.max(0, (gradientOffset - 20) / gradientLength), theme.red);
+                                        gradient.addColorStop(Math.max(0, (gradientOffset) / gradientLength), theme.red);
                                         gradient.addColorStop(gradientOffset / gradientLength, theme.black);
                                         gradient.addColorStop(1, theme.black);
                                     } else {
@@ -336,7 +339,7 @@ const DrawTransitions = React.memo(({ transition, highlightedTransition, epsilon
                                     const gradientLength = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
                                     const gradientOffset = progress * gradientLength;
                                     gradient.addColorStop(0, theme.red);
-                                    gradient.addColorStop(Math.max(0, (gradientOffset - 20) / gradientLength), theme.red);
+                                    gradient.addColorStop(Math.max(0, (gradientOffset) / gradientLength), theme.red);
                                     gradient.addColorStop(gradientOffset / gradientLength, theme.black);
                                     gradient.addColorStop(1, theme.black);
                                 } else {
