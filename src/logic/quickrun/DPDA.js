@@ -25,7 +25,7 @@ export class QuickDPDA {
                 t.label.split(" | ").forEach(operation => {
                     const [leftSide, ] = operation.split('/');
                     const [inputSymbol, stackTop] = leftSide.split(',');
-                    if (inputSymbol === char && stackTop === stack[stack.length - 1]) {
+                    if (inputSymbol === input[inputIndex] && stackTop === stack[stack.length - 1]) {
                         found = true
                     }
                 });
